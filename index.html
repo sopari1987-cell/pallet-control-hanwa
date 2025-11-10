@@ -3,1058 +3,501 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kontrol Palet HANWA</title>
-    <!-- Memuat Tailwind CSS -->
+    <title>Sistem Kontrol Palet Hanwa</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Memuat Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Memuat Firebase Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .container-app {
+            max-width: 1200px;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0d47a1;
+        }
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Custom scrollbar for table container */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <p class="text-white mt-3 text-lg">Memuat...</p>
+        </div>
+    </div>
+
+    <div class="container-app mx-auto p-4 md:p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2">Kontrol Palet Hanwa (Demo)</h1>
+
+        <!-- Authentication Status -->
+        <div id="auth-status" class="bg-blue-100 p-3 rounded-lg text-blue-800 mb-6 flex justify-between items-center">
+            <span>Status: <span id="user-status" class="font-semibold">Memuat...</span></span>
+            <span id="user-id-display" class="text-sm font-mono bg-blue-200 px-2 py-1 rounded"></span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex mb-6 border-b border-gray-300">
+            <button onclick="switchTab('master')" class="tab-btn p-3 font-semibold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition duration-150 ease-in-out" id="tab-master">Master Palet</button>
+            <button onclick="switchTab('transaction')" class="tab-btn p-3 font-semibold text-sm md:text-base text-gray-500 hover:text-gray-700 transition duration-150 ease-in-out" id="tab-transaction">Transaksi Palet</button>
+        </div>
+
+        <!-- Master Palet Tab Content -->
+        <div id="content-master" class="tab-content">
+            <!-- Master Palet Form -->
+            <div class="card bg-white p-6 rounded-xl mb-8">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Input Master Palet Baru</h2>
+                <form id="master-palet-form" onsubmit="window.handleMasterPaletSubmit(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="masterPaletId" name="masterPaletId" placeholder="ID Palet (Ex: HNW-A101)" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <select id="masterPaletType" name="masterPaletType" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Pilih Tipe Palet</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Heavy Duty">Heavy Duty</option>
+                            <option value="Lightweight">Lightweight</option>
+                        </select>
+                        <input type="text" id="masterPaletLocation" name="masterPaletLocation" placeholder="Lokasi Awal (Ex: Gudang A)" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <input type="number" id="masterPaletCapacity" name="masterPaletCapacity" placeholder="Kapasitas Angkut (Kg)" value="1000" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <button type="submit" class="mt-6 w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-bold rounded-lg btn-primary hover:bg-blue-700">
+                        Simpan Master Palet
+                    </button>
+                </form>
+            </div>
+
+            <!-- Master Palet List -->
+            <div class="card bg-white p-6 rounded-xl">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Daftar Master Palet (<span id="master-palet-count">0</span>)</h2>
+                <div class="table-container overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Palet</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapasitas (Kg)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Diperbarui</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="master-palet-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Data will be inserted here by JavaScript -->
+                            <tr><td colspan="7" class="text-center py-4 text-gray-500">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaksi Palet Tab Content -->
+        <div id="content-transaction" class="tab-content hidden">
+            <!-- Transaksi Form -->
+            <div class="card bg-white p-6 rounded-xl mb-8">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Input Transaksi Palet</h2>
+                <form id="transaction-form" onsubmit="window.handleTransactionSubmit(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="transactionPaletId" name="transactionPaletId" placeholder="ID Palet (Ex: HNW-A101)" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <select id="transactionType" name="transactionType" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Pilih Jenis Transaksi</option>
+                            <option value="Incoming">Masuk (Incoming)</option>
+                            <option value="Outgoing">Keluar (Outgoing)</option>
+                        </select>
+                        <input type="text" id="transactionLocation" name="transactionLocation" placeholder="Lokasi Baru (Ex: Line Produksi 1)" required class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <input type="text" id="transactionNotes" name="transactionNotes" placeholder="Catatan Tambahan (Opsional)" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <button type="submit" class="mt-6 w-full md:w-auto px-6 py-3 bg-green-600 text-white font-bold rounded-lg btn-primary hover:bg-green-700">
+                        Catat Transaksi
+                    </button>
+                </form>
+            </div>
+
+            <!-- Transaction List -->
+            <div class="card bg-white p-6 rounded-xl">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Riwayat Transaksi Palet (<span id="transaction-count">0</span>)</h2>
+                <div class="table-container overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Palet</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe Transaksi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Baru</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Data will be inserted here by JavaScript -->
+                            <tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Custom Modal for Messages -->
+    <div id="message-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 opacity-0 pointer-events-none">
+        <div class="bg-white rounded-xl p-6 w-11/12 max-w-sm card">
+            <h3 id="modal-title" class="text-lg font-bold mb-3">Pesan</h3>
+            <p id="modal-body" class="text-gray-700 mb-4"></p>
+            <button onclick="document.getElementById('message-modal').classList.remove('opacity-100', 'pointer-events-auto'); document.getElementById('message-modal').classList.add('opacity-0', 'pointer-events-none');" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg btn-primary">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, query, where, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // *** FIX APPLIED HERE: Added 'doc', 'setDoc', 'updateDoc', 'addDoc', etc. to imports ***
+        import { getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, orderBy, limit, serverTimestamp, runTransaction, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ==========================================================
-        // !!! LANKAH 1: KONFIGURASI FIREBASE ANDA DI SINI !!!
-        // Konfigurasi ini sudah diperbarui dengan data proyek Anda: control-palet-hanwa
-        // ==========================================================
-        const FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCf6fokcqZJfjwKAPIhYEzIPOfqgusG9Dk",
-            authDomain: "control-palet-hanwa.firebaseapp.com",
-            projectId: "control-palet-hanwa",
-            storageBucket: "control-palet-hanwa.firebasestorage.app",
-            messagingSenderId: "280463568038",
-            appId: "1:280463568038:web:a9d86aca5c28b01cd11867",
-            // measurementId: "G-VDLLYRP3KN" // Tidak digunakan di sini
+        // Global Variables provided by Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        const masterPaletCollectionPath = `artifacts/${appId}/public/data/masterPalets`;
+        const transactionCollectionPath = `artifacts/${appId}/public/data/transactions`;
+
+        // Utility function to show custom modal messages
+        window.showMessageModal = (message, type = 'info') => {
+            const modal = document.getElementById('message-modal');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+
+            title.textContent = type === 'error' ? 'Gagal!' : (type === 'success' ? 'Berhasil!' : 'Pesan');
+            body.textContent = message;
+
+            // Optional: change title color based on type
+            title.className = `text-lg font-bold mb-3 ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
+
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
         };
-        
-        // Atur ini menjadi ID Proyek Anda agar Firestore Security Rules bekerja
-        const PROJECT_APP_ID = FIREBASE_CONFIG.projectId; 
-        
-        // Nonaktifkan token kustom yang digunakan oleh lingkungan Canvas
-        const initialAuthToken = null; 
-        
-        // Variabel global
-        window.app = null;
-        window.db = null;
-        window.auth = null;
-        window.userId = null;
-        window.isAuthReady = false;
-        window.isFirestoreReady = false;
-        window.palletData = []; // Cache untuk data Palet Master
-        
-        // Atur log level debug untuk Firestore
-        setLogLevel('Debug');
 
-        // Fungsi inisialisasi Firebase
-        window.initFirebase = async () => {
-            if (!FIREBASE_CONFIG.projectId || FIREBASE_CONFIG.projectId === 'GANTI_DENGAN_PROJECT_ID_ANDA') {
-                console.error("Firebase Config belum diisi. Menggunakan dummy mode.");
-                window.showMessage("HARAP ISI KONFIGURASI FIREBASE DI FILE INDEX.HTML!", 'error');
-                window.isAuthReady = true;
-                window.isFirestoreReady = true;
-                window.userId = 'dummy-user';
-                window.renderApp();
-                return;
-            }
-
+        // --- FIREBASE INITIALIZATION & AUTHENTICATION ---
+        const initializeFirebase = async () => {
             try {
-                window.app = initializeApp(FIREBASE_CONFIG);
-                window.db = getFirestore(window.app);
-                window.auth = getAuth(window.app);
+                // Initialize App and Services
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
 
-                onAuthStateChanged(window.auth, async (user) => {
-                    if (!user) {
-                        // Jika tidak ada user, coba sign in Anonim.
-                        // Tidak ada token kustom di lingkungan GitHub, jadi langsung anonim.
-                        try {
-                             await signInAnonymously(window.auth);
-                        } catch (e) {
-                            console.error("Gagal Sign In Anonim:", e);
-                        }
+                // Authentication
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-status').textContent = 'Terkoneksi';
+                        document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                        console.log(`Autentikasi selesai. User ID: ${userId}`);
+                    } else {
+                         // Sign in anonymously if no token is available or user is signed out
+                        userId = null;
+                        await signInAnonymously(auth);
+                        // The onAuthStateChanged listener will fire again with the new anonymous user
                     }
 
-                    if (window.auth.currentUser) {
-                        window.userId = window.auth.currentUser.uid;
-                        window.isAuthReady = true;
-                        window.isFirestoreReady = true;
-                        console.log("Autentikasi selesai. User ID:", window.userId);
-                        console.log("Master Palet Collection Path:", window.getPalletMasterCollectionRef().path); // LOG BARU
-                        window.renderApp();
-                        window.startListeners();
+                    if (user || !initialAuthToken) {
+                        // This block ensures we only proceed after the initial auth check/sign-in
+                        isAuthReady = true;
+                        document.getElementById('loading-overlay').classList.add('hidden');
+                        startFirestoreListeners();
                     }
                 });
 
+                // If initialAuthToken is provided, use it for custom sign-in
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                }
+
+                console.log(`Master Palet Collection Path: ${masterPaletCollectionPath}`);
             } catch (error) {
-                console.error("Gagal inisialisasi Firebase:", error);
-                window.showMessage("Gagal inisialisasi Firebase. Cek konsol dan konfigurasi.", 'error');
-                window.isAuthReady = true;
-                window.isFirestoreReady = false; // Nonaktifkan Firestore jika gagal
-                window.renderApp();
+                console.error("Gagal inisialisasi Firebase atau autentikasi:", error);
+                document.getElementById('user-status').textContent = 'Gagal';
+                document.getElementById('loading-overlay').classList.add('hidden');
+                showMessageModal(`Gagal terhubung ke sistem. Cek konsol untuk detail error.`, 'error');
             }
         };
 
-        // Fungsi untuk mendapatkan path koleksi master palet
-        window.getPalletMasterCollectionRef = () => {
-             // Penyimpanan data publik: /artifacts/{appId}/public/data/masterPalets
-             const collectionPath = `artifacts/${PROJECT_APP_ID}/public/data/masterPalets`;
-             return collection(window.db, collectionPath);
-        };
+        // --- FIRESTORE LISTENERS ---
+        const startFirestoreListeners = () => {
+            if (!isAuthReady || !userId) return;
 
-        // Fungsi untuk mendapatkan path koleksi transaksi palet
-        window.getPalletTransactionCollectionRef = () => {
-             // Penyimpanan data publik: /artifacts/{appId}/public/data/palletTransactions
-             const collectionPath = `artifacts/${PROJECT_APP_ID}/public/data/palletTransactions`;
-             return collection(window.db, collectionPath);
-        };
-
-        // Fungsi untuk mendapatkan path dokumen STO (Stock Taking)
-        window.getStoDocRef = () => {
-             // Penyimpanan data publik: /artifacts/{appId}/public/data/sto
-             const collectionPath = `artifacts/${PROJECT_APP_ID}/public/data/sto`;
-             return doc(window.db, collectionPath, 'latest_sto');
-        };
-
-        // Fungsi untuk membuat ID Palet unik (contoh sederhana)
-        window.generatePalletId = () => {
-            return 'P' + Math.random().toString(36).substring(2, 9).toUpperCase();
-        };
-
-        // Inisialisasi setelah DOM dimuat
-        document.addEventListener('DOMContentLoaded', () => {
-            window.initFirebase();
-        });
-
-        // Event listener untuk data Master Palet (realtime)
-        window.listenToPalletMaster = () => {
-            if (!window.isFirestoreReady) return;
-
-            const q = query(window.getPalletMasterCollectionRef());
-
-            onSnapshot(q, (snapshot) => {
-                const palets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                window.palletData = palets;
-                console.log("Data Master Palet diperbarui:", palets.length);
-                if (window.currentMenu === 'MASTER_PALET') {
-                    window.renderMasterPalet(palets);
-                } else if (window.currentMenu === 'STOCK_PALET') {
-                    window.renderStockPalet(palets);
-                }
-                // Jika modal transaksi terbuka, update daftar palet
-                if (document.getElementById('transactionModal')?.classList.contains('flex')) {
-                    window.renderPalletCheckboxList();
-                }
+            // 1. Master Palet Listener
+            onSnapshot(collection(db, masterPaletCollectionPath), (snapshot) => {
+                const palets = [];
+                snapshot.forEach(doc => palets.push(doc.data()));
+                renderMasterPalets(palets);
+                console.log(`Data Master Palet diperbarui: ${palets.length}`);
             }, (error) => {
-                console.error("Gagal mendengarkan Master Palet:", error);
+                console.error("Gagal mendengarkan Master Palets:", error);
             });
-        };
 
-        // Event listener untuk data Transaksi Palet (realtime)
-        window.listenToPalletTransaction = () => {
-            if (!window.isFirestoreReady) return;
+            // 2. Transaction Listener
+            // Note: Sorting is done client-side to avoid index requirement in Firestore
+            onSnapshot(collection(db, transactionCollectionPath), (snapshot) => {
+                let transactions = [];
+                snapshot.forEach(doc => transactions.push(doc.data()));
 
-            const q = query(window.getPalletTransactionCollectionRef());
-
-            onSnapshot(q, (snapshot) => {
-                const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Sortir berdasarkan Tanggal Transaksi dan Jam Transaksi terbaru
+                // Sort by timestamp (descending) client-side
                 transactions.sort((a, b) => {
-                    // Menggunakan seconds dari timestamp Firestore untuk sorting akurat
-                    const aTime = a.tanggalTransaksi?.seconds || 0;
-                    const bTime = b.tanggalTransaksi?.seconds || 0;
-                    return bTime - aTime;
+                    const timeA = a.timestamp?.seconds || 0;
+                    const timeB = b.timestamp?.seconds || 0;
+                    return timeB - timeA;
                 });
-                window.palletTransactions = transactions; // Update global transactions
-                console.log("Data Transaksi Palet diperbarui:", transactions.length);
-                if (window.currentMenu === 'TRANSAKSI_PALET') {
-                    window.renderTransaksiPalet(transactions);
-                }
+
+                renderTransactions(transactions);
+                console.log(`Data Transaksi Palet diperbarui: ${transactions.length}`);
             }, (error) => {
                 console.error("Gagal mendengarkan Transaksi Palet:", error);
             });
         };
 
-        // Memanggil listeners setelah autentikasi siap
-        window.startListeners = () => {
-            if (window.isFirestoreReady) {
-                window.listenToPalletMaster();
-                window.listenToPalletTransaction();
-            }
-        };
-
-        // Fungsi untuk menampilkan pesan (menggantikan alert)
-        window.showMessage = (message, type = 'success') => {
-            const messageBox = document.getElementById('messageBox');
-            const messageText = document.getElementById('messageText');
-            messageText.textContent = message;
-
-            messageBox.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-xl z-50 transition-transform duration-300 transform';
-
-            if (type === 'success') {
-                messageBox.classList.add('bg-green-600', 'text-white', 'translate-x-0');
-            } else if (type === 'error') {
-                messageBox.classList.add('bg-red-600', 'text-white', 'translate-x-0');
-            } else {
-                messageBox.classList.add('bg-blue-600', 'text-white', 'translate-x-0');
-            }
-
-            setTimeout(() => {
-                messageBox.classList.remove('translate-x-0');
-                messageBox.classList.add('translate-x-full');
-            }, 3000);
-        };
-    </script>
-
-    <style>
-        :root {
-            --bg-dark: #1f2937; /* Gray-800 */
-            --bg-card: #374151; /* Gray-700 */
-            --text-light: #f3f4f6; /* Gray-100 */
-            --accent-blue: #3b82f6; /* Blue-500 */
-        }
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-light);
-            font-family: 'Inter', sans-serif;
-        }
-        .header-bg {
-            background-color: #111827; /* Gray-900 */
-        }
-        .card {
-            background-color: var(--bg-card);
-            transition: all 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-        }
-        .nav-link.active {
-            background-color: var(--accent-blue);
-            color: white;
-        }
-        .data-table th, .data-table td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid #4b5563; /* Gray-600 */
-        }
-        .data-table th {
-            color: #d1d5db; /* Gray-300 */
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-        }
-        .modal-content {
-            background-color: var(--bg-card);
-        }
-        /* Style untuk checkbox list dalam modal */
-        #palletListContainer {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #4b5563;
-            padding: 8px;
-            border-radius: 6px;
-        }
-        #palletListContainer label {
-            display: flex;
-            align-items: center;
-            padding: 6px 4px;
-            border-bottom: 1px solid #374151;
-            cursor: pointer;
-        }
-        #palletListContainer label:last-child {
-            border-bottom: none;
-        }
-        #palletListContainer label:hover {
-            background-color: #4b5563;
-        }
-    </style>
-</head>
-<body class="min-h-screen">
-
-    <!-- Message Box (Menggantikan alert) -->
-    <div id="messageBox" class="fixed top-4 right-4 p-4 rounded-lg shadow-xl z-50 transition-transform duration-300 transform translate-x-full">
-        <p id="messageText"></p>
-    </div>
-
-    <!-- Header / Navbar -->
-    <header class="header-bg shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-white flex items-center">
-                <i data-lucide="layout-grid" class="w-6 h-6 mr-3 text-accent-blue"></i>
-                CONTROL PALET HANWA
-            </h1>
-            <div class="flex items-center space-x-4">
-                <span class="text-sm text-gray-400">User ID: <span id="displayUserId">...</span></span>
-                <i data-lucide="user-circle" class="w-8 h-8 text-gray-400"></i>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Dashboard Menu (Halaman Utama) -->
-        <div id="dashboardMenu" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="card p-6 rounded-xl text-center cursor-pointer hover:shadow-2xl hover:border-accent-blue border-4 border-transparent" onclick="window.changeMenu('MASTER_PALET')">
-                <i data-lucide="package" class="w-16 h-16 mx-auto text-accent-blue mb-3"></i>
-                <h2 class="text-xl font-semibold">MASTER PALET</h2>
-                <p class="text-gray-400">Data Induk Palet</p>
-            </div>
-            <div class="card p-6 rounded-xl text-center cursor-pointer hover:shadow-2xl hover:border-accent-blue border-4 border-transparent" onclick="window.changeMenu('STOCK_PALET')">
-                <i data-lucide="layers-3" class="w-16 h-16 mx-auto text-accent-blue mb-3"></i>
-                <h2 class="text-xl font-semibold">STOCK PALET</h2>
-                <p class="text-gray-400">Ringkasan Stok Palet</p>
-            </div>
-            <div class="card p-6 rounded-xl text-center cursor-pointer hover:shadow-2xl hover:border-accent-blue border-4 border-transparent" onclick="window.changeMenu('TRANSAKSI_PALET')">
-                <i data-lucide="git-pull-request-draft" class="w-16 h-16 mx-auto text-accent-blue mb-3"></i>
-                <h2 class="text-xl font-semibold">TRANSAKSI PALET</h2>
-                <p class="text-gray-400">Log Pergerakan Palet</p>
-            </div>
-            <div class="card p-6 rounded-xl text-center cursor-pointer hover:shadow-2xl hover:border-accent-blue border-4 border-transparent" onclick="window.changeMenu('STO_PALET')">
-                <i data-lucide="list-checks" class="w-16 h-16 mx-auto text-accent-blue mb-3"></i>
-                <h2 class="text-xl font-semibold">STO PALET</h2>
-                <p class="text-gray-400">Stock Taking Palet</p>
-            </div>
-        </div>
-
-        <!-- Konten Dinamis (Tabel & Form) -->
-        <div id="dynamicContent" class="hidden mt-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="contentTitle" class="text-3xl font-bold text-accent-blue"></h2>
-                <div class="flex space-x-3">
-                    <button onclick="window.changeMenu('DASHBOARD')" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center">
-                        <i data-lucide="home" class="w-5 h-5 mr-2"></i> Dashboard
-                    </button>
-                    <button id="addActionButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center hidden" onclick="window.openAddModal()">
-                        <i data-lucide="plus" class="w-5 h-5 mr-2"></i> Tambah Data
-                    </button>
-                </div>
-            </div>
-
-            <!-- Area Tampilan Data -->
-            <div id="dataView" class="card p-6 rounded-xl shadow-lg overflow-x-auto">
-                <!-- Data akan di-render di sini -->
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal Tambah/Edit MASTER PALET -->
-    <div id="masterPaletModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-40" onclick="if(event.target.id === 'masterPaletModal') window.closeModal('masterPaletModal')">
-        <div class="modal-content w-full max-w-lg p-6 rounded-xl shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-gray-600">Tambah Palet Baru</h3>
-            <form id="masterPaletForm" onsubmit="window.handleMasterPaletSubmit(event)">
-                <div class="space-y-4">
-                    <input type="hidden" id="mp_id">
-                    <div>
-                        <label for="mp_nama" class="block text-sm font-medium text-gray-300">Nama Palet</label>
-                        <input type="text" id="mp_nama" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                    </div>
-                    <div>
-                        <label for="mp_size" class="block text-sm font-medium text-gray-300">Size (cth: 522.6 x 2395)</label>
-                        <input type="text" id="mp_size" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                    </div>
-                    <div>
-                        <label for="mp_status" class="block text-sm font-medium text-gray-300">Status</label>
-                        <select id="mp_status" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                            <option value="Kosong">Kosong</option>
-                            <option value="Terisi">Terisi</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="mp_lokasi" class="block text-sm font-medium text-gray-300">Lokasi</label>
-                        <input type="text" id="mp_lokasi" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                    </div>
-                    <div>
-                        <label for="mp_keterangan" class="block text-sm font-medium text-gray-300">Keterangan</label>
-                        <textarea id="mp_keterangan" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white"></textarea>
-                    </div>
-                </div>
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button type="button" onclick="window.closeModal('masterPaletModal')" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Batal</button>
-                    <button type="submit" class="bg-accent-blue hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Simpan Palet</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal Transaksi Palet (Multi-Input) -->
-    <div id="transactionModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-40" onclick="if(event.target.id === 'transactionModal') window.closeModal('transactionModal')">
-        <div class="modal-content w-full max-w-2xl p-6 rounded-xl shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-gray-600">Input Transaksi Palet</h3>
-            <form id="transactionForm" onsubmit="window.handleTransactionSubmit(event)">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Kolom Kiri: Pilihan Palet -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Pilih Palet (Multi-Input)</label>
-                        <div id="palletListContainer" class="bg-gray-700">
-                            <!-- Checkbox list akan di-render di sini -->
-                            <p class="text-center p-4 text-gray-400">Memuat data palet...</p>
-                        </div>
-                    </div>
-                    <!-- Kolom Kanan: Detail Transaksi -->
-                    <div class="space-y-4">
-                        <div>
-                            <label for="tr_jenis" class="block text-sm font-medium text-gray-300">Jenis Transaksi</label>
-                            <select id="tr_jenis" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                                <option value="">Pilih Jenis Transaksi</option>
-                                <option value="Masuk Hanwa">Masuk Hanwa</option>
-                                <option value="di Gunakan Produksi">di Gunakan Produksi</option>
-                                <option value="Keluar Hanwa">Keluar Hanwa</option>
-                                <option value="Masuk Customer">Masuk Customer</option>
-                                <option value="Keluar Customer">Keluar Customer</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="tr_status_akhir" class="block text-sm font-medium text-gray-300">Status Palet (Akhir)</label>
-                            <select id="tr_status_akhir" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                                <option value="Kosong">Kosong</option>
-                                <option value="Terisi">Terisi</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="tr_lokasi_akhir" class="block text-sm font-medium text-gray-300">Lokasi Palet (Akhir)</label>
-                            <input type="text" id="tr_lokasi_akhir" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white">
-                        </div>
-                        <div>
-                            <label for="tr_keterangan" class="block text-sm font-medium text-gray-300">Keterangan</label>
-                            <textarea id="tr_keterangan" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white"></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button type="button" onclick="window.closeModal('transactionModal')" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Batal</button>
-                    <button type="submit" class="bg-accent-blue hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Proses Transaksi</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal STO Palet (Stock Taking) -->
-    <div id="stoModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-40" onclick="if(event.target.id === 'stoModal') window.closeModal('stoModal')">
-        <div class="modal-content w-full max-w-4xl p-6 rounded-xl shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-gray-600">STO Palet (Stock Taking)</h3>
-            <div id="stoStatus" class="mb-4 text-sm text-gray-400"></div>
-
-            <p class="text-gray-300 mb-2">Input ID Palet yang terhitung di lokasi (dipisahkan baris baru atau koma):</p>
-            <textarea id="stoInput" rows="6" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-accent-blue focus:border-accent-blue text-white mb-4"></textarea>
-
-            <div class="mt-6 flex justify-between space-x-3">
-                <button type="button" onclick="window.closeModal('stoModal')" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Tutup</button>
-                <button type="button" onclick="window.processSto()" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg">Proses STO</button>
-            </div>
-            
-            <div id="stoResults" class="mt-6 border-t pt-4 border-gray-600 hidden">
-                <h4 class="text-xl font-semibold mb-3">Hasil STO Terakhir</h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div id="stoSummary" class="bg-gray-800 p-4 rounded-lg"></div>
-                    <div id="stoDetails" class="bg-gray-800 p-4 rounded-lg max-h-60 overflow-y-auto"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="header-bg mt-12 py-4 text-center text-sm text-gray-400">
-        &copy; 2025 Pallet Control System - Powered by Gemini
-    </footer>
-
-    <script>
-        // --- State Management Sederhana ---
-        window.currentMenu = 'DASHBOARD'; // Default view
-        window.palletTransactions = [];
-        // window.palletData sudah ada sebagai cache global
-        
-        // --- Fungsi UI Dasar ---
-
-        // Fungsi untuk mengganti menu
-        window.changeMenu = (menu) => {
-            window.currentMenu = menu;
-            const dashboard = document.getElementById('dashboardMenu');
-            const dynamicContent = document.getElementById('dynamicContent');
-            const contentTitle = document.getElementById('contentTitle');
-            const addActionButton = document.getElementById('addActionButton');
-
-            // Sembunyikan semua konten
-            dashboard.classList.add('hidden');
-            dynamicContent.classList.add('hidden');
-            addActionButton.classList.add('hidden');
-
-            if (menu === 'DASHBOARD') {
-                dashboard.classList.remove('hidden');
-                document.querySelectorAll('[data-lucide]').forEach(el => lucide.createIcons());
-            } else {
-                dynamicContent.classList.remove('hidden');
-                document.querySelectorAll('[data-lucide]').forEach(el => lucide.createIcons());
-
-                // Tentukan judul dan tombol aksi
-                switch (menu) {
-                    case 'MASTER_PALET':
-                        contentTitle.textContent = 'MASTER PALET';
-                        addActionButton.textContent = 'Tambah Palet';
-                        addActionButton.classList.remove('hidden');
-                        addActionButton.onclick = () => window.openMasterPaletModal();
-                        window.renderMasterPalet(window.palletData);
-                        break;
-                    case 'STOCK_PALET':
-                        contentTitle.textContent = 'STOCK PALET';
-                        window.renderStockPalet(window.palletData);
-                        break;
-                    case 'TRANSAKSI_PALET':
-                        contentTitle.textContent = 'TRANSAKSI PALET';
-                        addActionButton.textContent = 'Input Transaksi';
-                        addActionButton.classList.remove('hidden');
-                        addActionButton.onclick = () => window.openTransactionModal();
-                        window.renderTransaksiPalet(window.palletTransactions);
-                        break;
-                    case 'STO_PALET':
-                        contentTitle.textContent = 'STO PALET (Stock Taking)';
-                        addActionButton.textContent = 'STO Sekarang';
-                        addActionButton.classList.remove('hidden');
-                        addActionButton.onclick = () => window.openStoModal();
-                        window.renderStoPalet();
-                        break;
-                }
-            }
-        };
-
-        // Fungsi utama untuk me-render aplikasi setelah auth
-        window.renderApp = () => {
-            const displayUserId = document.getElementById('displayUserId');
-            displayUserId.textContent = window.userId ? window.userId.substring(0, 10) + '...' : 'Guest';
-
-            if (!window.isFirestoreReady) {
-                 window.showMessage("Firestore TIDAK SIAP. Harap cek koneksi dan konfigurasi.", 'error');
-            }
-            
-            // Render menu default
-            window.changeMenu('DASHBOARD');
-        };
-
-        // Fungsi untuk membuka modal
-        window.openModal = (modalId) => {
-            document.getElementById(modalId).classList.add('flex');
-            document.getElementById(modalId).classList.remove('hidden');
-        };
-
-        // Fungsi untuk menutup modal
-        window.closeModal = (modalId) => {
-            document.getElementById(modalId).classList.add('hidden');
-            document.getElementById(modalId).classList.remove('flex');
-        };
-
-        // --- MASTER PALET Logic ---
-
-        window.openMasterPaletModal = (pallet = null) => {
-            document.getElementById('masterPaletForm').reset();
-            document.getElementById('mp_id').value = pallet ? pallet.id : '';
-            document.getElementById('mp_nama').value = pallet ? pallet.namaPalet : '';
-            document.getElementById('mp_size').value = pallet ? pallet.size : '';
-            document.getElementById('mp_status').value = pallet ? pallet.status : 'Kosong';
-            document.getElementById('mp_lokasi').value = pallet ? pallet.lokasi : '';
-            document.getElementById('mp_keterangan').value = pallet ? pallet.keterangan : '';
-            openModal('masterPaletModal');
-        };
-
-        window.handleMasterPaletSubmit = async (event) => {
-            event.preventDefault();
-            if (!window.isFirestoreReady) {
-                window.showMessage("Firestore belum siap. Data tidak disimpan.", 'error');
-                return;
-            }
-
-            const id = document.getElementById('mp_id').value;
-            const namaPalet = document.getElementById('mp_nama').value;
-            const size = document.getElementById('mp_size').value;
-            const status = document.getElementById('mp_status').value;
-            const lokasi = document.getElementById('mp_lokasi').value;
-            const keterangan = document.getElementById('mp_keterangan').value;
-            const today = new Date().toLocaleDateString('id-ID');
-
-            const palletData = {
-                namaPalet,
-                size,
-                status,
-                lokasi,
-                tanggalUpdate: today,
-                jumlahDigunakan: id ? window.palletData.find(p => p.id === id)?.jumlahDigunakan || 0 : 0, // Pertahankan jumlahDigunakan
-                keterangan,
-            };
-
-            try {
-                if (id) {
-                    // Update Palet
-                    const palletRef = doc(window.getPalletMasterCollectionRef(), id);
-                    console.log("Mencoba Update Palet. Path:", palletRef.path); // LOG BARU
-                    await updateDoc(palletRef, palletData);
-                    window.showMessage(`Palet ID ${id} berhasil diperbarui!`);
-                } else {
-                    // Tambah Palet Baru
-                    const newId = window.generatePalletId();
-                    const palletRef = doc(window.getPalletMasterCollectionRef(), newId);
-                    console.log("Mencoba Tambah Palet. Path:", palletRef.path); // LOG BARU
-                    await setDoc(palletRef, palletData);
-                    window.showMessage(`Palet ID ${newId} berhasil ditambahkan!`);
-                }
-                window.closeModal('masterPaletModal');
-            } catch (error) {
-                console.error("Gagal menyimpan Palet. Detail Error:", error); // LOG LEBIH JELAS
-                window.showMessage("Gagal menyimpan Palet. Cek konsol untuk detail.", 'error');
-            }
-        };
-
-        window.renderMasterPalet = (palets) => {
-            const dataView = document.getElementById('dataView');
-            let tableHtml = `
-                <table class="data-table min-w-full divide-y divide-gray-700">
-                    <thead>
-                        <tr>
-                            <th>ID Palet</th>
-                            <th>Nama Palet</th>
-                            <th>Size</th>
-                            <th>Status</th>
-                            <th>Lokasi</th>
-                            <th>Tanggal Update</th>
-                            <th>Jumlah Digunakan</th>
-                            <th>Keterangan</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800">
-            `;
+        // --- RENDERING FUNCTIONS ---
+        const renderMasterPalets = (palets) => {
+            const list = document.getElementById('master-palet-list');
+            document.getElementById('master-palet-count').textContent = palets.length;
+            list.innerHTML = ''; // Clear existing rows
 
             if (palets.length === 0) {
-                tableHtml += `<tr><td colspan="9" class="text-center py-4 text-gray-400">Belum ada data Master Palet.</td></tr>`;
-            } else {
-                palets.forEach(p => {
-                    const statusColor = p.status === 'Terisi' ? 'bg-red-500' : 'bg-green-500';
-                    tableHtml += `
-                        <tr class="hover:bg-gray-700 cursor-pointer">
-                            <td class="font-semibold">${p.id}</td>
-                            <td>${p.namaPalet || '-'}</td>
-                            <td>${p.size || '-'}</td>
-                            <td><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor} text-white">${p.status}</span></td>
-                            <td>${p.lokasi || '-'}</td>
-                            <td>${p.tanggalUpdate || '-'}</td>
-                            <td>${p.jumlahDigunakan || 0}</td>
-                            <td>${p.keterangan || '-'}</td>
-                            <td>
-                                <button onclick="event.stopPropagation(); window.openMasterPaletModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="text-accent-blue hover:text-blue-400">
-                                    <i data-lucide="edit-3" class="w-4 h-4 inline-block"></i> Edit
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
-
-            tableHtml += `</tbody></table>`;
-            dataView.innerHTML = tableHtml;
-            document.querySelectorAll('[data-lucide]').forEach(el => lucide.createIcons());
-        };
-
-        // --- TRANSAKSI PALET Logic ---
-
-        window.openTransactionModal = () => {
-            document.getElementById('transactionForm').reset();
-            document.getElementById('tr_lokasi_akhir').value = 'AREA PRODUCT'; // Default value
-            window.renderPalletCheckboxList(); // Render daftar palet
-            openModal('transactionModal');
-        };
-
-        window.renderPalletCheckboxList = () => {
-            const container = document.getElementById('palletListContainer');
-            if (window.palletData.length === 0) {
-                container.innerHTML = '<p class="text-center p-4 text-gray-400">Tidak ada Palet yang tersedia.</p>';
+                list.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">Belum ada data Master Palet.</td></tr>';
                 return;
             }
 
-            let html = `<div class="p-2">`;
-            html += `<label class="font-bold text-sm text-accent-blue hover:bg-gray-700">
-                <input type="checkbox" id="selectAllPallets" class="mr-2" onchange="window.toggleSelectAll(this)"> Pilih Semua
-            </label>`;
+            palets.forEach(palet => {
+                const row = document.createElement('tr');
+                const statusClass = palet.status === 'Available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 
-            // Sortir data berdasarkan ID Palet
-            const sortedPallets = [...window.palletData].sort((a, b) => a.id.localeCompare(b.id));
-
-            sortedPallets.forEach(p => {
-                html += `
-                    <label>
-                        <input type="checkbox" name="selectedPallets" value="${p.id}" data-status-awal="${p.status}" data-lokasi-awal="${p.lokasi}" class="mr-2 h-4 w-4 text-accent-blue bg-gray-900 border-gray-600 rounded focus:ring-accent-blue">
-                        <span class="font-mono text-xs">${p.id}</span> - ${p.namaPalet} (${p.status} di ${p.lokasi})
-                    </label>
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${palet.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${palet.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${palet.status}</span></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${palet.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${palet.capacity}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(palet.lastUpdated).toLocaleString('id-ID')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="window.handleDeleteMasterPalet('${palet.id}')" class="text-red-600 hover:text-red-900 ml-2">Hapus</button>
+                    </td>
                 `;
+                list.appendChild(row);
             });
-            html += `</div>`;
-            container.innerHTML = html;
-        };
-        
-        window.toggleSelectAll = (checkbox) => {
-            const checkboxes = document.querySelectorAll('input[name="selectedPallets"]');
-            checkboxes.forEach(cb => cb.checked = checkbox.checked);
         };
 
-        window.handleTransactionSubmit = async (event) => {
+        const renderTransactions = (transactions) => {
+            const list = document.getElementById('transaction-list');
+            document.getElementById('transaction-count').textContent = transactions.length;
+            list.innerHTML = ''; // Clear existing rows
+
+            if (transactions.length === 0) {
+                list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Belum ada data Transaksi Palet.</td></tr>';
+                return;
+            }
+
+            transactions.forEach(tx => {
+                const row = document.createElement('tr');
+                const typeClass = tx.type === 'Incoming' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+
+                const timestamp = tx.timestamp ? new Date(tx.timestamp.seconds * 1000).toLocaleString('id-ID') : 'N/A';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timestamp}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${tx.paletId}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${typeClass}">${tx.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tx.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title="${tx.notes || ''}">${tx.notes || '-'}</td>
+                `;
+                list.appendChild(row);
+            });
+        };
+
+        // --- MASTER PALET HANDLERS ---
+        window.handleMasterPaletSubmit = async (event) => {
             event.preventDefault();
-            if (!window.isFirestoreReady) {
-                window.showMessage("Firestore belum siap. Data tidak disimpan.", 'error');
+            if (!isAuthReady || !userId) {
+                showMessageModal("Sistem belum siap. Tunggu autentikasi selesai.", 'error');
                 return;
             }
 
             const form = event.target;
-            const selectedPalletIds = Array.from(form.querySelectorAll('input[name="selectedPallets"]:checked')).map(cb => ({
-                id: cb.value,
-                statusAwal: cb.dataset.statusAwal,
-                lokasiAwal: cb.dataset.lokasiAwal,
-            }));
+            const formData = new FormData(form);
 
-            if (selectedPalletIds.length === 0) {
-                window.showMessage("Pilih setidaknya satu Palet untuk transaksi.", 'error');
+            const newPaletId = formData.get('masterPaletId').toUpperCase().trim();
+            if (!newPaletId) {
+                showMessageModal("ID Palet tidak boleh kosong.", 'error');
                 return;
             }
 
-            const jenisTransaksi = document.getElementById('tr_jenis').value;
-            const statusAkhir = document.getElementById('tr_status_akhir').value;
-            const lokasiAkhir = document.getElementById('tr_lokasi_akhir').value;
-            const keterangan = document.getElementById('tr_keterangan').value;
-
-            if (!jenisTransaksi || !lokasiAkhir) {
-                 window.showMessage("Lengkapi semua field wajib (Jenis Transaksi & Lokasi Akhir).", 'error');
-                return;
-            }
-
-            try {
-                const batchUpdates = [];
-                const transactionData = [];
-                const now = new Date();
-                const jamTransaksi = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                
-                let successCount = 0;
-
-                for (const pallet of selectedPalletIds) {
-                    const palletMasterDocRef = doc(window.getPalletMasterCollectionRef(), pallet.id);
-                    const transactionDocRef = doc(window.getPalletTransactionCollectionRef()); // Firestore akan buat ID Transaksi
-
-                    // Data Transaksi
-                    transactionData.push(setDoc(transactionDocRef, {
-                        idPalet: pallet.id,
-                        tanggalTransaksi: serverTimestamp(), // Gunakan serverTimestamp untuk sorting
-                        jamTransaksi: jamTransaksi,
-                        jenisTransaksi,
-                        statusAwal: pallet.statusAwal,
-                        statusAkhir: statusAkhir,
-                        lokasiAwal: pallet.lokasiAwal,
-                        lokasiAkhir: lokasiAkhir,
-                        keterangan,
-                        userId: window.userId,
-                    }));
-
-                    // Update Master Palet
-                    const currentPallet = window.palletData.find(p => p.id === pallet.id);
-                    const newUsage = (currentPallet.jumlahDigunakan || 0) + 1;
-
-                    batchUpdates.push(updateDoc(palletMasterDocRef, {
-                        status: statusAkhir,
-                        lokasi: lokasiAkhir,
-                        tanggalUpdate: now.toLocaleDateString('id-ID'),
-                        jumlahDigunakan: newUsage
-                    }));
-                    successCount++;
-                }
-
-                // Jalankan semua update
-                await Promise.all([...transactionData, ...batchUpdates]);
-
-                window.showMessage(`${successCount} Palet berhasil diproses transaksinya!`);
-                window.closeModal('transactionModal');
-
-            } catch (error) {
-                console.error("Gagal memproses Transaksi Palet:", error);
-                window.showMessage("Gagal memproses Transaksi. Cek konsol untuk detail.", 'error');
-            }
-        };
-
-
-        window.renderTransaksiPalet = (transactions) => {
-            const dataView = document.getElementById('dataView');
-            let tableHtml = `
-                <table class="data-table min-w-full divide-y divide-gray-700">
-                    <thead>
-                        <tr>
-                            <th>ID Transaksi</th>
-                            <th>ID Palet</th>
-                            <th>Tanggal Transaksi</th>
-                            <th>Jam Transaksi</th>
-                            <th>Jenis Transaksi</th>
-                            <th>Status Awal</th>
-                            <th>Status Akhir</th>
-                            <th>Lokasi Awal</th>
-                            <th>Lokasi Akhir</th>
-                            <th>Keterangan</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800">
-            `;
-
-            if (transactions.length === 0) {
-                tableHtml += `<tr><td colspan="10" class="text-center py-4 text-gray-400">Belum ada data Transaksi Palet.</td></tr>`;
-            } else {
-                transactions.slice(0, 50).forEach(t => { // Tampilkan 50 transaksi terbaru
-                    const date = t.tanggalTransaksi?.toDate ? t.tanggalTransaksi.toDate() : new Date();
-                    const statusAwalColor = t.statusAwal === 'Terisi' ? 'bg-red-500' : 'bg-green-500';
-                    const statusAkhirColor = t.statusAkhir === 'Terisi' ? 'bg-red-500' : 'bg-green-500';
-
-                    tableHtml += `
-                        <tr class="hover:bg-gray-700">
-                            <td>${t.id.substring(0, 8)}...</td>
-                            <td class="font-semibold">${t.idPalet}</td>
-                            <td>${date.toLocaleDateString('id-ID')}</td>
-                            <td>${t.jamTransaksi}</td>
-                            <td class="font-medium text-yellow-300">${t.jenisTransaksi}</td>
-                            <td><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusAwalColor} text-white">${t.statusAwal}</span></td>
-                            <td><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusAkhirColor} text-white">${t.statusAkhir}</span></td>
-                            <td>${t.lokasiAwal || '-'}</td>
-                            <td>${t.lokasiAkhir || '-'}</td>
-                            <td>${t.keterangan || '-'}</td>
-                        </tr>
-                    `;
-                });
-            }
-
-            tableHtml += `</tbody></table>`;
-            dataView.innerHTML = tableHtml;
-        };
-
-
-        // --- STOCK PALET Logic ---
-        window.renderStockPalet = (palets) => {
-            const dataView = document.getElementById('dataView');
-            const stockSummary = {};
-
-            // Mengelompokkan dan menghitung stok
-            palets.forEach(p => {
-                const key = `${p.namaPalet}|${p.size}`;
-                if (!stockSummary[key]) {
-                    stockSummary[key] = {
-                        namaPalet: p.namaPalet,
-                        size: p.size,
-                        kosong: 0,
-                        terisiHanwa: 0,
-                        diLuarPabrik: 0,
-                        total: 0
-                    };
-                }
-                
-                stockSummary[key].total++;
-
-                if (p.status === 'Kosong') {
-                    stockSummary[key].kosong++;
-                }
-
-                // Logika status/lokasi:
-                // 1. Terisi di HANWA: Status 'Terisi' DAN lokasi adalah area internal (misal: AREA, PRODUKSI, HANWA)
-                const isDiHanwa = p.lokasi.toUpperCase().includes('AREA') || p.lokasi.toUpperCase().includes('PRODUKSI') || p.lokasi.toUpperCase().includes('HANWA');
-
-                if (p.status === 'Terisi' && isDiHanwa) {
-                    stockSummary[key].terisiHanwa++;
-                }
-
-                // 2. Di Luar Pabrik: Lokasi adalah eksternal (misal: CUSTOMER, LUAR)
-                const isDiLuar = p.lokasi.toUpperCase().includes('CUSTOMER') || p.lokasi.toUpperCase().includes('LUAR');
-
-                if (isDiLuar) {
-                    stockSummary[key].diLuarPabrik++;
-                }
-                
-                // Jika lokasi di Hanwa dan status Terisi, itu sudah dihitung di terisiHanwa.
-                // Palet kosong di luar pabrik juga dihitung di diLuarPabrik.
-            });
-
-            const summaryArray = Object.values(stockSummary);
-            
-            let tableHtml = `
-                <table class="data-table min-w-full divide-y divide-gray-700">
-                    <thead>
-                        <tr>
-                            <th>Nama Palet</th>
-                            <th>Size</th>
-                            <th>Kosong</th>
-                            <th>Terisi di HANWA</th>
-                            <th>Di Luar Pabrik</th>
-                            <th>Total Palet</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800">
-            `;
-
-            if (summaryArray.length === 0) {
-                tableHtml += `<tr><td colspan="6" class="text-center py-4 text-gray-400">Belum ada ringkasan stok.</td></tr>`;
-            } else {
-                summaryArray.forEach(s => {
-                    tableHtml += `
-                        <tr class="hover:bg-gray-700">
-                            <td class="font-semibold">${s.namaPalet}</td>
-                            <td>${s.size}</td>
-                            <td class="text-green-400">${s.kosong}</td>
-                            <td class="text-red-400">${s.terisiHanwa}</td>
-                            <td class="text-yellow-400">${s.diLuarPabrik}</td>
-                            <td class="font-bold text-lg">${s.total}</td>
-                        </tr>
-                    `;
-                });
-            }
-
-            tableHtml += `</tbody></table>`;
-            dataView.innerHTML = tableHtml;
-        };
-
-
-        // --- STO PALET Logic ---
-
-        window.openStoModal = async () => {
-            document.getElementById('stoInput').value = '';
-            document.getElementById('stoResults').classList.add('hidden');
-            await window.renderStoPalet(); // Load data STO terakhir
-            openModal('stoModal');
-        }
-
-        window.renderStoPalet = async () => {
-            // Tampilkan data STO terakhir di modal atau di halaman
-            try {
-                if (!window.isFirestoreReady) {
-                    document.getElementById('stoStatus').textContent = "Sistem STO tidak aktif karena Firestore tidak siap.";
-                    return;
-                }
-                
-                const stoDoc = await getDoc(window.getStoDocRef());
-                const stoStatus = document.getElementById('stoStatus');
-                const stoResultsDiv = document.getElementById('stoResults');
-                const stoSummary = document.getElementById('stoSummary');
-                const stoDetails = document.getElementById('stoDetails');
-
-
-                if (stoDoc.exists()) {
-                    const data = stoDoc.data();
-                    const date = data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.dateString);
-                    
-                    stoStatus.innerHTML = `<span class="font-bold text-lg text-green-400">STO Terakhir: ${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID')}</span> (Dibuat oleh User: ${data.userId.substring(0, 10)}...)`;
-                    stoResultsDiv.classList.remove('hidden');
-
-                    let summaryHtml = `
-                        <p class="font-medium text-white mb-2">Ringkasan:</p>
-                        <ul class="list-disc list-inside text-gray-300">
-                            <li>Total Palet Master: ${data.totalMaster}</li>
-                            <li>Palet Ditemukan (Counted): ${data.countedPallets.length}</li>
-                            <li>Palet Selisih (Missing/Extra): ${data.variancePallets.length}</li>
-                        </ul>
-                    `;
-                    stoSummary.innerHTML = summaryHtml;
-
-                    let detailsHtml = `<p class="font-medium text-white mb-2">Detail Selisih:</p>`;
-                    if (data.variancePallets.length === 0) {
-                        detailsHtml += `<p class="text-green-400">Tidak ada selisih. STO Sempurna!</p>`;
-                    } else {
-                        data.variancePallets.forEach(v => {
-                             const typeColor = v.type.includes('Missing') ? 'text-red-400' : 'text-yellow-400';
-                            detailsHtml += `<p class="${typeColor} text-sm">${v.type}: ${v.idPalet} (Lokasi Master: ${v.masterLocation || '-'})</p>`;
-                        });
-                    }
-                    stoDetails.innerHTML = detailsHtml;
-
-                } else {
-                    stoStatus.textContent = "Belum ada Stock Taking (STO) yang dilakukan.";
-                    stoResultsDiv.classList.add('hidden');
-                }
-
-            } catch (error) {
-                console.error("Gagal memuat STO terakhir:", error);
-                document.getElementById('stoStatus').textContent = "Gagal memuat data STO. Cek konsol.";
-            }
-        }
-
-        window.processSto = async () => {
-            if (!window.isFirestoreReady) {
-                window.showMessage("Firestore belum siap. STO tidak dapat diproses.", 'error');
-                return;
-            }
-
-            const stoInput = document.getElementById('stoInput').value;
-            if (!stoInput.trim()) {
-                window.showMessage("Input ID Palet tidak boleh kosong.", 'error');
-                return;
-            }
-            
-            // Parsing input (baris baru atau koma) dan membersihkan ID
-            const countedIds = stoInput.split(/[\n,]/)
-                                      .map(id => id.trim().toUpperCase())
-                                      .filter(id => id.length > 0);
-
-            if (countedIds.length === 0) {
-                window.showMessage("Tidak ada ID Palet valid yang terdeteksi.", 'error');
-                return;
-            }
-
-            // Dapatkan data Master Palet saat ini (dari cache onSnapshot)
-            const masterPalets = window.palletData;
-            const masterIds = new Set(masterPalets.map(p => p.id));
-            const masterMap = new Map(masterPalets.map(p => [p.id, p]));
-
-            // Hitung Selisih
-            const countedSet = new Set(countedIds);
-            const variancePallets = [];
-
-            // 1. Missing (Ada di Master, tidak ada di Hitungan)
-            masterIds.forEach(masterId => {
-                if (!countedSet.has(masterId)) {
-                    variancePallets.push({
-                        idPalet: masterId,
-                        type: 'Missing (Ada di Master, tidak ditemukan)',
-                        masterLocation: masterMap.get(masterId)?.lokasi,
-                        // Palet ini harusnya ada di master, tapi tidak ditemukan di STO
-                    });
-                }
-            });
-
-            // 2. Extra (Ada di Hitungan, tidak ada di Master) - Palet tidak terdaftar
-            countedSet.forEach(countedId => {
-                if (!masterIds.has(countedId)) {
-                    variancePallets.push({
-                        idPalet: countedId,
-                        type: 'Extra (Baru/Tidak Terdaftar di Master)',
-                        // Palet ini ditemukan di STO, tapi tidak ada di master. Perlu dicek
-                    });
-                }
-            });
-            
-            // Simpan Hasil STO
-            const stoDocRef = window.getStoDocRef();
-            const now = new Date();
-
-            const stoResult = {
-                timestamp: serverTimestamp(),
-                dateString: now.toISOString(),
-                userId: window.userId,
-                totalMaster: masterPalets.length,
-                countedPallets: countedIds,
-                variancePallets: variancePallets,
+            const paletData = {
+                id: newPaletId,
+                type: formData.get('masterPaletType'),
+                status: 'Available', // Default status for a new pallet
+                location: formData.get('masterPaletLocation'),
+                capacity: parseInt(formData.get('masterPaletCapacity') || 1, 10),
+                lastUpdated: new Date().toISOString(),
+                createdBy: userId,
             };
 
             try {
-                await setDoc(stoDocRef, stoResult);
-                window.showMessage(`STO berhasil disimpan! ${variancePallets.length} selisih ditemukan.`, 'success');
-                window.renderStoPalet();
-                document.getElementById('stoInput').value = '';
-                window.closeModal('stoModal'); // Tutup modal setelah proses
+                // Use doc() from the import to create a document reference with a specific ID
+                const masterPaletRef = doc(db, masterPaletCollectionPath, newPaletId);
+
+                // Use setDoc to create/overwrite the document
+                await setDoc(masterPaletRef, paletData);
+
+                showMessageModal(`Master Palet ${newPaletId} berhasil disimpan!`, 'success');
+                form.reset();
             } catch (error) {
-                console.error("Gagal menyimpan hasil STO:", error);
-                window.showMessage("Gagal menyimpan STO. Cek konsol.", 'error');
+                console.error("Gagal menyimpan Palet. Detail Error:", error);
+                showMessageModal(`Gagal menyimpan Palet: ${error.message}`, 'error');
             }
         };
 
-        // Initialize Lucide Icons on load
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
+        window.handleDeleteMasterPalet = async (paletId) => {
+            if (!isAuthReady || !userId) {
+                showMessageModal("Sistem belum siap.", 'error');
+                return;
+            }
+
+            // Simple custom "confirmation" using the modal
+            const confirmed = window.prompt(`Yakin ingin menghapus Master Palet ID: ${paletId}? Ketik 'HAPUS' untuk konfirmasi.`);
+            if (confirmed !== 'HAPUS') {
+                return;
+            }
+
+            try {
+                // Check if there are any transactions associated with this pallet ID first (optional safety check)
+                const txQuery = query(collection(db, transactionCollectionPath), where("paletId", "==", paletId), limit(1));
+                const txSnapshot = await getDocs(txQuery);
+
+                if (!txSnapshot.empty) {
+                     showMessageModal(`Palet ${paletId} tidak dapat dihapus karena memiliki riwayat transaksi.`, 'error');
+                     return;
+                }
+
+                await deleteDoc(doc(db, masterPaletCollectionPath, paletId));
+                showMessageModal(`Master Palet ${paletId} berhasil dihapus.`, 'success');
+            } catch (error) {
+                console.error("Gagal menghapus Palet:", error);
+                showMessageModal(`Gagal menghapus Palet: ${error.message}`, 'error');
+            }
+        };
+
+        // --- TRANSACTION HANDLERS ---
+        window.handleTransactionSubmit = async (event) => {
+            event.preventDefault();
+            if (!isAuthReady || !userId) {
+                showMessageModal("Sistem belum siap. Tunggu autentikasi selesai.", 'error');
+                return;
+            }
+
+            const form = event.target;
+            const formData = new FormData(form);
+
+            const paletId = formData.get('transactionPaletId').toUpperCase().trim();
+            const transactionType = formData.get('transactionType');
+            const newLocation = formData.get('transactionLocation');
+            const notes = formData.get('transactionNotes');
+
+            if (!paletId || !transactionType || !newLocation) {
+                showMessageModal("Semua kolom transaksi harus diisi.", 'error');
+                return;
+            }
+
+            try {
+                // Use a transaction to ensure atomic update of both Master Palet and Transaction Record
+                await runTransaction(db, async (transaction) => {
+                    const masterPaletRef = doc(db, masterPaletCollectionPath, paletId);
+                    const masterPaletDoc = await transaction.get(masterPaletRef);
+
+                    if (!masterPaletDoc.exists()) {
+                        throw new Error(`Master Palet ID ${paletId} tidak ditemukan.`);
+                    }
+
+                    const currentPaletData = masterPaletDoc.data();
+                    const newStatus = transactionType === 'Incoming' ? 'Available' : 'In Use';
+
+                    // 1. Update Master Palet
+                    const updatedPaletData = {
+                        location: newLocation,
+                        status: newStatus,
+                        lastUpdated: new Date().toISOString(),
+                    };
+                    transaction.update(masterPaletRef, updatedPaletData);
+
+                    // 2. Create Transaction Record
+                    const newTx = {
+                        paletId: paletId,
+                        type: transactionType,
+                        location: newLocation,
+                        notes: notes,
+                        timestamp: serverTimestamp(),
+                        previousLocation: currentPaletData.location,
+                        userId: userId,
+                    };
+                    const transactionCollectionRef = collection(db, transactionCollectionPath);
+                    transaction.set(doc(transactionCollectionRef), newTx); // Use set(doc()) to add a new document with auto-ID
+
+                });
+
+                showMessageModal(`Transaksi Palet ${paletId} (${transactionType}) berhasil dicatat.`, 'success');
+                form.reset();
+
+            } catch (error) {
+                console.error("Gagal mencatat transaksi. Detail Error:", error);
+                showMessageModal(`Gagal mencatat transaksi: ${error.message}`, 'error');
+            }
+        };
+
+
+        // --- UI & INITIALIZATION ---
+        window.onload = () => {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            initializeFirebase();
+        };
+
+        window.switchTab = (tabName) => {
+            const tabs = ['master', 'transaction'];
+            tabs.forEach(tab => {
+                const btn = document.getElementById(`tab-${tab}`);
+                const content = document.getElementById(`content-${tab}`);
+                if (tab === tabName) {
+                    btn.classList.add('border-blue-600', 'text-blue-600');
+                    btn.classList.remove('text-gray-500', 'hover:text-gray-700', 'border-gray-300');
+                    content.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('border-blue-600', 'text-blue-600');
+                    btn.classList.add('text-gray-500', 'hover:text-gray-700', 'border-gray-300');
+                    content.classList.add('hidden');
+                }
+            });
+        };
+
     </script>
 </body>
 </html>
