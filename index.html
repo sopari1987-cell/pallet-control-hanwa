@@ -3,162 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Palet Data Viewer</title>
-    <!-- Memuat Tailwind CSS untuk styling yang cepat dan responsif -->
+    <title>Kontrol Palet Hanwa</title>
+    <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Mengatur font default */
+        /* Mengatur font default dan dark mode */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Abu-abu muda */
+            background-color: #242933; /* Warna background gelap */
+            color: #e5e7eb; /* Warna teks terang */
         }
-        /* Style untuk container utama (menggunakan flexbox untuk responsivitas) */
-        .data-container {
-            display: grid;
-            gap: 1.5rem; /* Spasi 6 (tailwind) */
-            padding: 1.5rem;
+        /* Style untuk kartu menu */
+        .menu-card {
+            background-color: #313742;
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+            border: 1px solid transparent;
         }
-        /* Untuk tampilan desktop, gunakan 3 kolom */
-        @media (min-width: 1024px) {
-            .data-container {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
+        .menu-card:hover {
+            background-color: #3b424f;
+            transform: translateY(-3px);
+            border-color: #4f46e5; /* Border ungu saat hover */
         }
-        /* Untuk tampilan tablet, gunakan 2 kolom */
-        @media (min-width: 640px) and (max-width: 1023px) {
-            .data-container {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+        .icon {
+            color: #9ca3af; /* Warna ikon default (abu-abu terang) */
+            transition: color 0.3s ease-in-out;
+        }
+        .menu-card:hover .icon {
+            color: #6366f1; /* Warna ikon ungu saat hover */
+        }
+        /* Style untuk Master Palet View */
+        #master-pallet-view {
+            background-color: #242933;
+            color: #e5e7eb;
+            min-height: 100vh;
+        }
+        .pallet-card {
+            background-color: #313742;
+            border-top: 4px solid #6366f1;
+        }
+        .pallet-table {
+            background-color: #313742;
+        }
+        .pallet-table th {
+            background-color: #3b424f;
+            color: #9ca3af;
+        }
+        .pallet-table tr:nth-child(even) {
+            background-color: #2d333f;
         }
     </style>
 </head>
 <body>
 
-    <!-- Header Aplikasi -->
-    <header class="bg-indigo-600 shadow-md p-4 mb-6">
-        <h1 class="text-3xl font-bold text-white text-center">Master Data Palet</h1>
-    </header>
-
-    <!-- Loading State dan Pesan Kesalahan -->
-    <div id="status-message" class="text-center p-4 text-xl font-semibold text-gray-700">
-        Memuat data palet dari Google Sheet...
+    <!-- Kontainer Utama Aplikasi -->
+    <div id="app-container" class="min-h-screen">
+        <!-- Konten akan dimuat di sini oleh JavaScript (Dashboard atau Master Palet) -->
     </div>
 
-    <!-- Container untuk Kartu Palet (Tampilan Utama) -->
-    <div id="pallet-cards-container" class="data-container max-w-7xl mx-auto">
-        <!-- Kartu Palet akan dimasukkan di sini oleh JavaScript -->
-    </div>
-
-    <!-- Bagian Data Tabel (Opsional/Detail) -->
-    <div class="max-w-7xl mx-auto p-6 mt-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Detail Data Palet (Tabel)</h2>
-        <div id="table-container" class="bg-white shadow-lg rounded-xl overflow-x-auto p-4">
-            <!-- Tabel data akan dimasukkan di sini oleh JavaScript -->
-            <table id="pallet-table" class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <!-- Header tabel akan diisi di sini -->
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <!-- Baris data akan diisi di sini -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-
-    <!-- Firebase dan Logic JavaScript -->
+    <!-- Firebase, Navigasi, dan Logic JavaScript -->
     <script type="module">
         // --- 1. SETUP FIREBASE (MANDATORI SESUAI ATURAN PLATFORM) ---
-        // Variabel global __app_id, __firebase_config, dan __initial_auth_token
-        // disediakan oleh Canvas environment.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        let db, auth;
+        let db, auth, userId = null;
 
-        // Inisialisasi Firebase dan Autentikasi
         async function initializeFirebase() {
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-
-                // Autentikasi menggunakan token kustom atau anonim
+                
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
-                console.log("Firebase dan Autentikasi berhasil diinisialisasi.");
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // Render ulang setelah auth
+                        renderApp(localStorage.getItem('currentPage') || 'dashboard');
+                    } else {
+                        // Fallback jika auth gagal, gunakan ID acak
+                        userId = 'guest-' + crypto.randomUUID().substring(0, 8);
+                        renderApp(localStorage.getItem('currentPage') || 'dashboard');
+                    }
+                    console.log("Firebase Auth State Changed. User ID:", userId);
+                });
             } catch (error) {
                 console.error("Kesalahan saat inisialisasi Firebase:", error);
-                // Lanjutkan, karena fokus utama adalah fetch Google Sheet
+                // Render tetap berjalan meskipun ada error Firebase
+                renderApp(localStorage.getItem('currentPage') || 'dashboard');
+            }
+        }
+        
+        // --- 2. NAVIGASI STATE ---
+        function navigate(page) {
+            localStorage.setItem('currentPage', page);
+            renderApp(page);
+        }
+
+        // --- 3. RENDERING UTAMA ---
+        function renderApp(page) {
+            const container = document.getElementById('app-container');
+            container.innerHTML = ''; // Bersihkan konten
+
+            switch (page) {
+                case 'masterPalet':
+                    container.innerHTML = createMasterPalletView();
+                    fetchMasterPalletData(); // Panggil fungsi fetch data
+                    break;
+                case 'stockPalet':
+                    container.innerHTML = createPlaceholderView('Stock Palet', 'Ringkasan Stok Palet');
+                    break;
+                case 'transaksiPalet':
+                    container.innerHTML = createPlaceholderView('Transaksi Palet', 'Log Pergerakan Palet');
+                    break;
+                case 'stoPalet':
+                    container.innerHTML = createPlaceholderView('STO Palet', 'Stock Taking Palet');
+                    break;
+                case 'dashboard':
+                default:
+                    container.innerHTML = createDashboardView();
+                    break;
             }
         }
 
-        // --- 2. KONFIGURASI GOOGLE SHEET ---
+        // --- 4. TAMPILAN DASHBOARD (Menu Utama) ---
+        function createDashboardView() {
+            return `
+                <div class="p-6">
+                    <header class="flex justify-between items-center mb-10">
+                        <div class="flex items-center">
+                            <!-- Icon Palet (SVG sederhana) -->
+                            <svg class="w-8 h-8 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10M10 7v10M16 7v10M20 4v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2h12a2 2 0 012 2z"></path>
+                            </svg>
+                            <h1 class="text-3xl font-bold text-gray-100 uppercase">Control Palet Hanwa</h1>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-400">
+                            <span class="mr-3 hidden sm:inline">User ID: ${userId || 'Memuat...'}</span>
+                            <!-- Icon User -->
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.939 13.939 0 0112 16c2.585 0 5.043.682 7.079 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                    </header>
+
+                    <!-- Grid Menu Utama (4x4, responsif) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                        
+                        <!-- MASTER PALET -->
+                        <div onclick="navigate('masterPalet')" class="menu-card rounded-xl p-8 shadow-xl">
+                            <!-- Icon Kubus (Master) -->
+                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10m-4-11l-4 2.12V17M16 12l4 2.12V17"></path>
+                            </svg>
+                            <div class="text-center">
+                                <h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Master Palet</h2>
+                                <p class="text-sm text-gray-400">Data Induk Palet</p>
+                            </div>
+                        </div>
+
+                        <!-- STOCK PALET -->
+                        <div onclick="navigate('stockPalet')" class="menu-card rounded-xl p-8 shadow-xl">
+                            <!-- Icon Stack (Stok) -->
+                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 12V3h16v9m-4-4l-4 4-4-4m8 8h-8v4h8v-4z"></path>
+                            </svg>
+                            <div class="text-center">
+                                <h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Stock Palet</h2>
+                                <p class="text-sm text-gray-400">Ringkasan Stok Palet</p>
+                            </div>
+                        </div>
+
+                        <!-- TRANSAKSI PALET -->
+                        <div onclick="navigate('transaksiPalet')" class="menu-card rounded-xl p-8 shadow-xl">
+                            <!-- Icon Log/Kunci (Transaksi/Pergerakan) -->
+                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-1.447 3.382l-.675.337M4 12a7 7 0 1014 0 7 7 0 10-14 0z"></path>
+                            </svg>
+                            <div class="text-center">
+                                <h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Transaksi Palet</h2>
+                                <p class="text-sm text-gray-400">Log Pergerakan Palet</p>
+                            </div>
+                        </div>
+
+                        <!-- STO PALET -->
+                        <div onclick="navigate('stoPalet')" class="menu-card rounded-xl p-8 shadow-xl">
+                            <!-- Icon Checklist (STO/Stock Taking) -->
+                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                            </svg>
+                            <div class="text-center">
+                                <h2 class="text-xl font-bold uppercase mb-1 text-gray-100">STO Palet</h2>
+                                <p class="text-sm text-gray-400">Stock Taking Palet</p>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <footer class="mt-12 text-center text-xs text-gray-600">
+                        Aplikasi Kontrol Palet (v1.0) - Ditenagai oleh Gemini
+                    </footer>
+                </div>
+            `;
+        }
+        
+        // --- 5. TAMPILAN MASTER PALET (Integrasi dari kode sebelumnya) ---
+        
         // GANTI NILAI DI BAWAH INI DENGAN DATA SHEET ANDA YANG SEBENARNYA
         const GOOGLE_SHEET_ID = '1Q-6x0B7Y-p6Dq3s6Uv2P4hT7W5Rz8n0O9h1C2y3I4o5'; // GANTI dengan ID Google Sheet Anda
         const SHEET_NAME = 'MasterPalet'; // GANTI dengan Nama Sheet Anda (misalnya: Sheet1)
-        const RANGE = 'A:D'; // Opsional: Tentukan kolom yang ingin diambil, misalnya A:D
+        const RANGE = 'A:D'; // Tentukan kolom yang ingin diambil
 
-        // URL GViz (Google Visualization API Query)
         const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=${RANGE}`;
 
-        const statusMessageEl = document.getElementById('status-message');
-        const cardsContainerEl = document.getElementById('pallet-cards-container');
-        const tableHeaderEl = document.querySelector('#pallet-table thead');
-        const tableBodyEl = document.querySelector('#pallet-table tbody');
+        /**
+         * Template view untuk Master Palet
+         */
+        function createMasterPalletView() {
+            return `
+                <div id="master-pallet-view" class="p-6">
+                    <header class="flex justify-between items-center mb-6 border-b border-gray-700 pb-3">
+                        <div class="flex items-center">
+                            <button onclick="navigate('dashboard')" class="text-gray-400 hover:text-indigo-400 transition mr-4">
+                                <!-- Icon Home/Kembali -->
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
+                            </button>
+                            <h1 class="text-2xl font-bold text-indigo-400">Master Palet</h1>
+                        </div>
+                        <span id="status-message" class="text-sm text-gray-400">Memuat data...</span>
+                    </header>
 
-        // --- 3. FUNGSI FETCH DAN PARSE DATA ---
+                    <div id="pallet-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mb-10">
+                        <!-- Kartu Palet akan dimasukkan di sini oleh JavaScript -->
+                        <div class="pallet-card rounded-xl p-6 shadow-md animate-pulse">
+                            <div class="h-4 bg-gray-600 rounded w-1/2 mb-4"></div>
+                            <div class="h-3 bg-gray-700 rounded mb-2"></div>
+                            <div class="h-3 bg-gray-700 rounded w-3/4"></div>
+                        </div>
+                    </div>
+
+                    <h2 class="text-xl font-bold text-gray-300 mb-3 border-b border-gray-800 pb-2">Detail Data Palet</h2>
+                    <div id="table-container" class="shadow-lg rounded-xl overflow-x-auto">
+                        <table id="pallet-table" class="pallet-table min-w-full divide-y divide-gray-700 rounded-xl">
+                            <thead class="bg-gray-800"><tr></tr></thead>
+                            <tbody class="divide-y divide-gray-700"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="error-box" class="hidden mt-4 p-4 rounded-lg bg-red-800 text-white font-semibold"></div>
+                </div>
+            `;
+        }
 
         /**
          * Mengambil data dari Google Sheet menggunakan API GViz.
-         * @returns {Promise<Object[]|null>} Array data baris atau null jika gagal.
          */
-        async function fetchSpreadsheetData() {
+        async function fetchMasterPalletData() {
+            const statusMessageEl = document.getElementById('status-message');
+            const cardsContainerEl = document.getElementById('pallet-cards-container');
+            const tableHeaderEl = document.querySelector('#pallet-table thead tr');
+            const tableBodyEl = document.querySelector('#pallet-table tbody');
+            const errorBoxEl = document.getElementById('error-box');
+
+            if (!statusMessageEl) return; // Guard
+
+            statusMessageEl.textContent = 'Memuat data...';
+            cardsContainerEl.innerHTML = ''; // Kosongkan
+            errorBoxEl.classList.add('hidden');
+
             try {
                 const response = await fetch(GOOGLE_SHEET_URL);
-                if (!response.ok) {
-                    throw new Error(`Gagal fetch data: Status ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Status ${response.status}`);
                 
-                // Text response dari GViz API harus diproses. 
-                // Formatnya: /*O_o*/\ngoogle.visualization.Query.setResponse({...});
                 const text = await response.text();
-                
-                // Menghilangkan awalan dan akhiran yang tidak perlu untuk mendapatkan JSON murni
                 const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
                 const data = JSON.parse(jsonText);
                 
                 if (data.status !== 'ok') {
-                     throw new Error(`Status query tidak OK: ${data.errors ? data.errors[0].message : 'Kesalahan tidak diketahui'}`);
+                     throw new Error(`Query error: ${data.errors ? data.errors[0].message : 'Unknown error'}`);
                 }
 
-                return parseGVizData(data);
+                const parsedData = parseGVizData(data);
+                displayMasterPalletData(parsedData, statusMessageEl, cardsContainerEl, tableHeaderEl, tableBodyEl);
                 
             } catch (error) {
                 console.error("Kesalahan saat mengambil data Google Sheet:", error);
-                statusMessageEl.textContent = `🚨 GAGAL MEMUAT DATA: ${error.message}. Pastikan ID Sheet, Nama Sheet, dan Izin akses publik sudah benar.`;
-                cardsContainerEl.innerHTML = '';
-                return null;
+                statusMessageEl.textContent = 'Gagal memuat data.';
+                errorBoxEl.textContent = `🚨 GAGAL MEMUAT DATA: ${error.message}. Pastikan ID Sheet, Nama Sheet, dan Izin akses publik sudah benar.`;
+                errorBoxEl.classList.remove('hidden');
             }
         }
-
+        
         /**
          * Mengurai struktur data GViz menjadi array objek JavaScript yang sederhana.
-         * @param {Object} data - Objek respons GViz yang telah diparsing.
-         * @returns {Object[]} Array data baris.
          */
         function parseGVizData(data) {
             const columns = data.table.cols.map(col => ({
                 id: col.id,
-                label: col.label || col.id // Menggunakan label atau id sebagai header
+                label: col.label || col.id 
             }));
             const rows = data.table.rows;
             const result = [];
@@ -166,95 +318,85 @@
             for (const row of rows) {
                 const rowObject = {};
                 for (let i = 0; i < columns.length; i++) {
-                    const colId = columns[i].label; // Gunakan label sebagai kunci objek
-                    // Nilai data ada di 'v'
-                    rowObject[colId] = row.c[i] ? (row.c[i].f || row.c[i].v) : '';
+                    const colLabel = columns[i].label;
+                    rowObject[colLabel] = row.c[i] ? (row.c[i].f || row.c[i].v) : '';
                 }
                 result.push(rowObject);
             }
-            
-            // Kolom header/label
-            const headers = columns.map(c => c.label);
-            
-            return { data: result, headers: headers };
+            return { data: result, headers: columns.map(c => c.label) };
         }
-
-
-        // --- 4. FUNGSI RENDERING (DISPLAY) DATA ---
 
         /**
          * Menampilkan data yang sudah diurai ke dalam kartu dan tabel.
-         * @param {Object} parsedData - Objek yang berisi { data: Array, headers: Array }.
          */
-        function displayData(parsedData) {
+        function displayMasterPalletData(parsedData, statusEl, cardsEl, headerEl, bodyEl) {
             const { data, headers } = parsedData;
             
             if (data.length === 0) {
-                statusMessageEl.textContent = "Data tidak ditemukan di Sheet yang ditentukan.";
+                statusEl.textContent = "Data tidak ditemukan.";
+                cardsEl.innerHTML = '<p class="text-center col-span-full text-gray-500">Tidak ada data Master Palet yang tersedia.</p>';
+                headerEl.innerHTML = '';
+                bodyEl.innerHTML = '';
                 return;
             }
 
-            statusMessageEl.textContent = `Menampilkan ${data.length} data Palet.`;
-            cardsContainerEl.innerHTML = ''; // Kosongkan container kartu
+            statusEl.textContent = `${data.length} Data Palet Ditemukan`;
+            cardsEl.innerHTML = ''; 
 
-            // 4a. Rendering Kartu Palet
+            // Rendering Kartu Palet
             data.forEach(item => {
-                const card = createPalletCard(item);
-                cardsContainerEl.appendChild(card);
+                cardsEl.appendChild(createPalletCard(item));
             });
 
-            // 4b. Rendering Tabel Detail
-            renderPalletTable(data, headers);
+            // Rendering Tabel Detail
+            renderPalletTable(data, headers, headerEl, bodyEl);
         }
-
+        
         /**
          * Membuat elemen kartu untuk setiap data Palet.
-         * @param {Object} item - Objek data Palet (misalnya: { "Pallet ID": "P-001", "Status": "Tersedia", ... }).
-         * @returns {HTMLElement} Elemen div kartu yang sudah di-styling.
          */
         function createPalletCard(item) {
             const card = document.createElement('div');
-            card.className = 'bg-white rounded-xl shadow-xl p-6 transition duration-300 hover:shadow-2xl hover:scale-[1.02] border-t-4 border-indigo-500';
+            card.className = 'pallet-card rounded-xl shadow-xl p-6 transition duration-300 hover:shadow-2xl border-t-4 border-indigo-500';
 
-            // Menentukan warna status
-            const status = item['Status'] || 'Tidak Diketahui';
-            let statusColor = 'bg-gray-200 text-gray-800';
-            if (status.toLowerCase().includes('tersedia')) {
-                statusColor = 'bg-green-100 text-green-700 border-green-500';
-            } else if (status.toLowerCase().includes('dipakai')) {
-                statusColor = 'bg-yellow-100 text-yellow-700 border-yellow-500';
+            const status = item['Status'] || 'Kosong';
+            let statusColor = 'bg-gray-600 text-gray-200';
+            if (status.toLowerCase().includes('tersedia') || status.toLowerCase().includes('kosong')) {
+                statusColor = 'bg-green-700 text-green-100';
+            } else if (status.toLowerCase().includes('dipakai') || status.toLowerCase().includes('digunakan')) {
+                statusColor = 'bg-yellow-700 text-yellow-100';
             } else if (status.toLowerCase().includes('rusak')) {
-                statusColor = 'bg-red-100 text-red-700 border-red-500';
+                statusColor = 'bg-red-700 text-red-100';
             }
 
             // Membangun konten kartu
             let content = `
                 <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-2xl font-extrabold text-indigo-700 leading-tight">
-                        ${item['Pallet ID'] || 'N/A'}
+                    <h3 class="text-xl font-extrabold text-indigo-400 leading-tight">
+                        ${item['ID Palet'] || 'N/A'}
                     </h3>
-                    <span class="text-sm font-semibold px-3 py-1 rounded-full ${statusColor} border border-opacity-50">
+                    <span class="text-sm font-semibold px-3 py-1 rounded-full ${statusColor}">
                         ${status}
                     </span>
                 </div>
-                <div class="space-y-2 text-gray-600">
+                <div class="space-y-2 text-gray-400">
             `;
 
-            // Tambahkan semua field data ke dalam kartu (kecuali Pallet ID dan Status yang sudah di atas)
-            const keys = Object.keys(item).filter(key => key !== 'Pallet ID' && key !== 'Status');
+            // Tambahkan semua field data yang relevan
+            const keys = Object.keys(item).filter(key => key !== 'ID Palet' && key !== 'Status');
             keys.forEach(key => {
                 content += `
                     <div class="flex justify-between items-center text-sm">
                         <span class="font-medium text-gray-500">${key}:</span>
-                        <span class="font-semibold text-gray-700">${item[key] || '-'}</span>
+                        <span class="font-semibold text-gray-300">${item[key] || '-'}</span>
                     </div>
                 `;
             });
 
             content += `
                 </div>
-                <button class="mt-4 w-full bg-indigo-500 text-white py-2 rounded-lg font-bold hover:bg-indigo-600 transition duration-150 text-sm">
-                    Lihat Detail &rarr;
+                <button class="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 transition duration-150 text-sm">
+                    Lihat Log Transaksi &rarr;
                 </button>
             `;
 
@@ -264,55 +406,63 @@
 
         /**
          * Merender data Palet ke dalam elemen tabel.
-         * @param {Object[]} data - Array data Palet.
-         * @param {string[]} headers - Array header kolom.
          */
-        function renderPalletTable(data, headers) {
+        function renderPalletTable(data, headers, headerEl, bodyEl) {
             // Render Header Tabel
-            const headerRow = document.createElement('tr');
+            headerEl.innerHTML = '';
             headers.forEach(header => {
                 const th = document.createElement('th');
-                th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                th.className = 'px-6 py-3 text-left text-xs font-medium uppercase tracking-wider';
                 th.textContent = header;
-                headerRow.appendChild(th);
+                headerEl.appendChild(th);
             });
-            tableHeaderEl.innerHTML = '';
-            tableHeaderEl.appendChild(headerRow);
 
             // Render Body Tabel
-            tableBodyEl.innerHTML = '';
+            bodyEl.innerHTML = '';
             data.forEach((item, index) => {
                 const tr = document.createElement('tr');
-                tr.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                tr.className = index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'; // Darker background
                 
                 headers.forEach(header => {
                     const td = document.createElement('td');
-                    td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700';
+                    td.className = 'px-6 py-4 whitespace-nowrap text-sm';
                     td.textContent = item[header] || '-';
                     tr.appendChild(td);
                 });
-                tableBodyEl.appendChild(tr);
+                bodyEl.appendChild(tr);
             });
         }
-
-        // --- 5. EKSEKUSI APLIKASI ---
-
-        // Fungsi utama untuk menjalankan aplikasi
-        async function runApplication() {
-            await initializeFirebase(); // Inisialisasi Firebase terlebih dahulu
-            
-            const parsedData = await fetchSpreadsheetData();
-            
-            if (parsedData) {
-                displayData(parsedData);
-            }
+        
+        // --- 6. TAMPILAN PLACEHOLDER MENU LAIN ---
+        function createPlaceholderView(title, subtitle) {
+            return `
+                <div class="p-6">
+                    <header class="flex items-center mb-6 border-b border-gray-700 pb-3">
+                        <button onclick="navigate('dashboard')" class="text-gray-400 hover:text-indigo-400 transition mr-4">
+                            <!-- Icon Home/Kembali -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
+                        </button>
+                        <h1 class="text-2xl font-bold text-indigo-400">${title}</h1>
+                    </header>
+                    <div class="bg-gray-800 p-8 rounded-xl shadow-lg text-center mt-10">
+                        <h2 class="text-xl font-semibold mb-2 text-gray-200">Fitur ${title}</h2>
+                        <p class="text-gray-400 mb-4">${subtitle} - Halaman ini sedang dalam pengembangan.</p>
+                        <p class="text-sm text-gray-500">Saat ini hanya menu "Master Palet" yang sudah terintegrasi dengan data Google Sheet.</p>
+                        <button onclick="navigate('dashboard')" class="mt-6 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">
+                            Kembali ke Menu Utama
+                        </button>
+                    </div>
+                </div>
+            `;
         }
 
-        window.onload = runApplication;
+        // --- 7. EKSEKUSI APLIKASI ---
+        window.onload = () => {
+            // Pasang fungsi navigasi ke window agar bisa dipanggil dari onclick
+            window.navigate = navigate;
+            initializeFirebase(); // Autentikasi dan mulai rendering
+        };
 
     </script>
-
-    <!-- Memuat icon (lucide-react, meskipun ini HTML, kita gunakan font-awesome placeholder jika diperlukan) -->
-    <!-- Tidak perlu memuat icon eksternal karena menggunakan teks/Tailwind -->
 </body>
 </html>
