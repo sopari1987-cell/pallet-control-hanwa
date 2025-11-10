@@ -32,8 +32,8 @@
         .menu-card:hover .icon {
             color: #6366f1; /* Warna ikon ungu saat hover */
         }
-        /* Style untuk Master Palet View */
-        #master-pallet-view {
+        /* Style untuk Master Palet View dan Stock Palet View */
+        .app-view {
             background-color: #242933;
             color: #e5e7eb;
             min-height: 100vh;
@@ -58,7 +58,7 @@
 
     <!-- Kontainer Utama Aplikasi -->
     <div id="app-container" class="min-h-screen">
-        <!-- Konten akan dimuat di sini oleh JavaScript (Dashboard atau Master Palet) -->
+        <!-- Konten akan dimuat di sini oleh JavaScript -->
     </div>
 
     <!-- Firebase, Navigasi, dan Logic JavaScript -->
@@ -121,7 +121,8 @@
                     fetchMasterPalletData(); // Panggil fungsi fetch data
                     break;
                 case 'stockPalet':
-                    container.innerHTML = createPlaceholderView('Stock Palet', 'Ringkasan Stok Palet');
+                    container.innerHTML = createStockPalletView(); // Panggil view baru
+                    fetchStockPalletData(); // Panggil fungsi fetch data baru
                     break;
                 case 'transaksiPalet':
                     container.innerHTML = createPlaceholderView('Transaksi Palet', 'Log Pergerakan Palet');
@@ -172,7 +173,7 @@
                             </div>
                         </div>
 
-                        <!-- STOCK PALET -->
+                        <!-- STOCK PALET (DIUBAH) -->
                         <div onclick="navigate('stockPalet')" class="menu-card rounded-xl p-8 shadow-xl">
                             <!-- Icon Stack (Stok) -->
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -217,65 +218,29 @@
             `;
         }
         
-        // --- 5. TAMPILAN MASTER PALET (Integrasi dari kode sebelumnya) ---
+        // --- 5. SETUP GOOGLE SHEET URLS ---
         
         // GANTI NILAI DI BAWAH INI DENGAN DATA SHEET ANDA YANG SEBENARNYA
         const GOOGLE_SHEET_ID = '1YiIDIa0Ysi-O0k4askOtd8Qf66KnQuJxlLMngDlqM1A'; // GANTI dengan ID Google Sheet Anda
-        const SHEET_NAME = 'MASTER PALET'; // GANTI dengan Nama Sheet Anda (misalnya: Sheet1)
-        const RANGE = 'A:H'; // Gunakan range yang cukup luas untuk mencakup semua kolom yang mungkin
+        const MASTER_SHEET_NAME = 'MASTER PALET'; 
+        const STOCK_SHEET_NAME = 'Ringkasan Stok Palet'; // Nama sheet baru
+        const RANGE = 'A:H'; 
 
-        const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=${RANGE}`;
+        const MASTER_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${MASTER_SHEET_NAME}&range=${RANGE}`;
+        const STOCK_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${STOCK_SHEET_NAME}&range=${RANGE}`;
 
+        // --- 6. FUNGSI FETCH DATA UNIVERSAL ---
+        
         /**
-         * Template view untuk Master Palet
+         * Mengambil data dari Google Sheet.
          */
-        function createMasterPalletView() {
-            return `
-                <div id="master-pallet-view" class="p-6">
-                    <header class="flex justify-between items-center mb-6 border-b border-gray-700 pb-3">
-                        <div class="flex items-center">
-                            <button onclick="navigate('dashboard')" class="text-gray-400 hover:text-indigo-400 transition mr-4">
-                                <!-- Icon Home/Kembali -->
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
-                            </button>
-                            <h1 class="text-2xl font-bold text-indigo-400">Master Palet</h1>
-                        </div>
-                        <span id="status-message" class="text-sm text-gray-400">Memuat data...</span>
-                    </header>
-
-                    <!-- Penghapusan section kartu individual -->
-
-                    <h2 class="text-xl font-bold text-gray-300 mb-3 border-b border-gray-800 pb-2">Detail Data Palet</h2>
-                    <div id="table-container" class="shadow-lg rounded-xl overflow-x-auto">
-                        <table id="pallet-table" class="pallet-table min-w-full divide-y divide-gray-700 rounded-xl">
-                            <thead class="bg-gray-800"><tr></tr></thead>
-                            <tbody class="divide-y divide-gray-700"></tbody>
-                        </table>
-                    </div>
-
-                    <div id="error-box" class="hidden mt-4 p-4 rounded-lg bg-red-800 text-white font-semibold"></div>
-                </div>
-            `;
-        }
-
-        /**
-         * Mengambil data dari Google Sheet menggunakan API GViz.
-         */
-        async function fetchMasterPalletData() {
-            const statusMessageEl = document.getElementById('status-message');
-            const tableHeaderEl = document.querySelector('#pallet-table thead tr');
-            const tableBodyEl = document.querySelector('#pallet-table tbody');
-            const errorBoxEl = document.getElementById('error-box');
-
-            if (!statusMessageEl) return; // Guard
-
-            statusMessageEl.textContent = 'Memuat data...';
+        async function fetchGoogleSheetData(url, statusEl, bodyEl, errorBoxEl, successCallback) {
+            statusEl.textContent = 'Memuat data...';
             errorBoxEl.classList.add('hidden');
-            tableHeaderEl.innerHTML = '';
-            tableBodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Memuat data...</td></tr>';
+            bodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Memuat data...</td></tr>';
 
             try {
-                const response = await fetch(GOOGLE_SHEET_URL);
+                const response = await fetch(url);
                 if (!response.ok) throw new Error(`Status ${response.status}`);
                 
                 const text = await response.text();
@@ -284,16 +249,16 @@
                 const data = JSON.parse(jsonText);
                 
                 if (data.status !== 'ok') {
-                     throw new Error(`Query error: ${data.errors ? data.errors[0].message : 'Unknown error'}`);
+                    throw new Error(`Query error: ${data.errors ? data.errors[0].message : 'Unknown error'}`);
                 }
 
                 const parsedData = parseGVizData(data);
-                displayMasterPalletData(parsedData, statusMessageEl, tableHeaderEl, tableBodyEl);
+                successCallback(parsedData, statusEl, bodyEl);
                 
             } catch (error) {
                 console.error("Kesalahan saat mengambil data Google Sheet:", error);
-                statusMessageEl.textContent = 'Gagal memuat data.';
-                tableBodyEl.innerHTML = ''; // Kosongkan
+                statusEl.textContent = 'Gagal memuat data.';
+                bodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-red-500">Gagal memuat data. Periksa ID Sheet dan izin akses.</td></tr>';
                 errorBoxEl.textContent = `🚨 GAGAL MEMUAT DATA: ${error.message}. Pastikan ID Sheet, Nama Sheet, dan Izin akses publik sudah benar.`;
                 errorBoxEl.classList.remove('hidden');
             }
@@ -311,37 +276,83 @@
             const rows = data.table.rows;
             const result = [];
 
-            for (const row of rows) {
-                const rowObject = {};
-                for (let i = 0; i < columns.length; i++) {
-                    const colLabel = columns[i].label;
-                    // Ambil nilai yang diformat (f) jika ada, jika tidak, ambil nilai mentah (v)
-                    rowObject[colLabel] = row.c[i] ? (row.c[i].f || row.c[i].v) : '';
+            // Pastikan baris data tidak kosong (header saja)
+            if (rows.length > 0) {
+                 for (const row of rows) {
+                    const rowObject = {};
+                    for (let i = 0; i < columns.length; i++) {
+                        const colLabel = columns[i].label;
+                        // Ambil nilai yang diformat (f) jika ada, jika tidak, ambil nilai mentah (v)
+                        rowObject[colLabel] = row.c[i] ? (row.c[i].f || row.c[i].v) : '';
+                    }
+                    result.push(rowObject);
                 }
-                result.push(rowObject);
             }
+           
             return { data: result, headers: columns.map(c => c.label) };
         }
 
-        /**
-         * Menampilkan data yang sudah diurai ke dalam tabel.
-         */
-        function displayMasterPalletData(parsedData, statusEl, headerEl, bodyEl) {
-            const { data, headers } = parsedData;
-            
-            if (data.length === 0) {
-                statusEl.textContent = "Data tidak ditemukan.";
-                headerEl.innerHTML = '';
-                bodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Tidak ada data Master Palet yang tersedia.</td></tr>';
-                return;
-            }
+        // --- 7. LOGIC UNTUK MASTER PALET (Tabel Detail) ---
 
-            statusEl.textContent = `${data.length} Data Palet Ditemukan`;
+        function createMasterPalletView() {
+            return `
+                <div id="master-pallet-view" class="app-view p-6">
+                    ${createHeader('Master Palet', 'dashboard')}
 
-            // Rendering Tabel Detail
-            renderPalletTable(data, headers, headerEl, bodyEl);
+                    <h2 class="text-xl font-bold text-gray-300 mb-3 border-b border-gray-800 pb-2">Detail Data Palet</h2>
+                    <div id="table-container" class="shadow-lg rounded-xl overflow-x-auto">
+                        <table id="pallet-table-master" class="pallet-table min-w-full divide-y divide-gray-700 rounded-xl">
+                            <thead class="bg-gray-800"><tr></tr></thead>
+                            <tbody class="divide-y divide-gray-700"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="error-box-master" class="hidden mt-4 p-4 rounded-lg bg-red-800 text-white font-semibold"></div>
+                </div>
+            `;
         }
 
+        async function fetchMasterPalletData() {
+            const statusMessageEl = document.getElementById('status-message-master');
+            const tableHeaderEl = document.querySelector('#pallet-table-master thead tr');
+            const tableBodyEl = document.querySelector('#pallet-table-master tbody');
+            const errorBoxEl = document.getElementById('error-box-master');
+            
+            if (!statusMessageEl) return; // Guard
+
+            await fetchGoogleSheetData(MASTER_PALLET_URL, statusMessageEl, tableBodyEl, errorBoxEl, (parsedData, statusEl, bodyEl) => {
+                const { data, headers } = parsedData;
+                
+                if (data.length === 0) {
+                    statusEl.textContent = "Data tidak ditemukan.";
+                    tableHeaderEl.innerHTML = '';
+                    bodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Tidak ada data Master Palet yang tersedia.</td></tr>';
+                    return;
+                }
+
+                statusEl.textContent = `${data.length} Data Palet Ditemukan`;
+
+                // Render Header
+                tableHeaderEl.innerHTML = headers.map(header => 
+                    `<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">${header}</th>`
+                ).join('');
+
+                // Render Body dengan pewarnaan bersyarat
+                bodyEl.innerHTML = data.map((item, index) => {
+                    const rowColorClass = getRowColorClass(item['Status'], item['Lokasi']);
+                    const rowBgClass = (index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700');
+                    
+                    return `
+                        <tr class="${rowBgClass} ${rowColorClass}">
+                            ${headers.map(header => 
+                                `<td class="px-6 py-3 whitespace-nowrap text-sm">${item[header] || '-'}</td>`
+                            ).join('')}
+                        </tr>
+                    `;
+                }).join('');
+            });
+        }
+        
         /**
          * Mendapatkan kelas warna berdasarkan status dan lokasi.
          */
@@ -361,53 +372,149 @@
             return 'text-gray-200'; // Default, warna font terang otomatis
         }
         
-        /**
-         * Merender data Palet ke dalam elemen tabel dengan pewarnaan bersyarat.
-         */
-        function renderPalletTable(data, headers, headerEl, bodyEl) {
-            // Render Header Tabel
-            headerEl.innerHTML = '';
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.className = 'px-6 py-3 text-left text-xs font-medium uppercase tracking-wider';
-                th.textContent = header;
-                headerEl.appendChild(th);
-            });
+        // --- 8. LOGIC UNTUK STOCK PALET (Ringkasan/Total) ---
 
-            // Render Body Tabel
-            bodyEl.innerHTML = '';
-            data.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                const rowClass = getRowColorClass(item['Status'], item['Lokasi']);
+        /**
+         * Template view untuk Stock Palet (menggunakan tampilan ringkasan/kartu total)
+         */
+        function createStockPalletView() {
+            return `
+                <div id="stock-pallet-view" class="app-view p-6">
+                    ${createHeader('Stock Palet', 'dashboard')}
+
+                    <h2 class="text-xl font-bold text-gray-300 mb-4 border-b border-gray-800 pb-2">Ringkasan Stok Palet Berdasarkan Lokasi</h2>
+                    
+                    <!-- Kontainer Kartu Ringkasan -->
+                    <div id="stock-summary-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Kartu akan diisi di sini -->
+                    </div>
+
+                    <h2 class="text-xl font-bold text-gray-300 mb-3 border-b border-gray-800 pb-2">Detail Data Ringkasan</h2>
+                    <div id="table-container-stock" class="shadow-lg rounded-xl overflow-x-auto">
+                        <table id="pallet-table-stock" class="pallet-table min-w-full divide-y divide-gray-700 rounded-xl">
+                            <thead class="bg-gray-800"><tr></tr></thead>
+                            <tbody class="divide-y divide-gray-700"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="error-box-stock" class="hidden mt-4 p-4 rounded-lg bg-red-800 text-white font-semibold"></div>
+                </div>
+            `;
+        }
+
+        async function fetchStockPalletData() {
+            const statusMessageEl = document.getElementById('status-message-stock');
+            const summaryContainerEl = document.getElementById('stock-summary-container');
+            const tableHeaderEl = document.querySelector('#pallet-table-stock thead tr');
+            const tableBodyEl = document.querySelector('#pallet-table-stock tbody');
+            const errorBoxEl = document.getElementById('error-box-stock');
+            
+            if (!statusMessageEl) return; // Guard
+
+            // Kosongkan kartu dan tabel saat memuat
+            summaryContainerEl.innerHTML = '';
+            tableHeaderEl.innerHTML = '';
+            
+            await fetchGoogleSheetData(STOCK_PALLET_URL, statusMessageEl, tableBodyEl, errorBoxEl, (parsedData, statusEl, bodyEl) => {
+                const { data, headers } = parsedData;
                 
-                // Terapkan latar belakang baris bergantian dan kelas warna teks
-                tr.className = (index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700') + ' ' + rowClass;
+                if (data.length === 0) {
+                    statusEl.textContent = "Data ringkasan stok tidak ditemukan.";
+                    bodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Tidak ada data Ringkasan Stok Palet yang tersedia.</td></tr>';
+                    // Tampilkan kartu placeholder
+                    summaryContainerEl.innerHTML = createSummaryCardPlaceholder(0, 'Total Palet');
+                    return;
+                }
+
+                statusEl.textContent = `${data.length} Baris Ringkasan Ditemukan`;
+
+                // 1. Hitung Total Keseluruhan (asumsi kolom terakhir adalah Total)
+                const totalIndex = headers.length > 0 ? headers.findIndex(h => h.toUpperCase().includes('TOTAL')) : -1;
+                let grandTotal = 0;
                 
-                headers.forEach(header => {
-                    const td = document.createElement('td');
-                    td.className = 'px-6 py-3 whitespace-nowrap text-sm';
-                    td.textContent = item[header] || '-';
-                    tr.appendChild(td);
+                // Cari total palet dari data.
+                // Jika sheet 'Ringkasan Stok Palet' berisi baris ringkasan (misalnya per Lokasi/Status),
+                // kita bisa menjumlahkan kolom 'Total' (atau kolom terakhir) untuk Grand Total.
+                data.forEach(item => {
+                    const totalValue = totalIndex >= 0 ? parseFloat(String(Object.values(item)[totalIndex]).replace(/[^0-9.]/g, '') || 0) : 0;
+                    grandTotal += totalValue;
                 });
-                bodyEl.appendChild(tr);
+
+                // 2. Render Summary Card (Total)
+                summaryContainerEl.innerHTML = createSummaryCard(grandTotal.toLocaleString('id-ID'), 'Total Palet Hanwa', 'text-indigo-400');
+
+                // 3. Render Table Detail Ringkasan
+                tableHeaderEl.innerHTML = headers.map(header => 
+                    `<th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">${header}</th>`
+                ).join('');
+
+                bodyEl.innerHTML = data.map((item, index) => {
+                    const rowBgClass = (index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700');
+                    // Tidak ada pewarnaan bersyarat kompleks di sini, gunakan default
+                    return `
+                        <tr class="${rowBgClass} text-gray-200">
+                            ${headers.map(header => 
+                                `<td class="px-6 py-3 whitespace-nowrap text-sm">${item[header] || '-'}</td>`
+                            ).join('')}
+                        </tr>
+                    `;
+                }).join('');
             });
         }
         
-        // --- 6. TAMPILAN PLACEHOLDER MENU LAIN ---
-        function createPlaceholderView(title, subtitle) {
-            return `
-                <div class="p-6">
-                    <header class="flex items-center mb-6 border-b border-gray-700 pb-3">
-                        <button onclick="navigate('dashboard')" class="text-gray-400 hover:text-indigo-400 transition mr-4">
+        /**
+         * Template Header Universal
+         */
+        function createHeader(title, backPage) {
+             return `
+                <header class="flex justify-between items-center mb-6 border-b border-gray-700 pb-3" id="header-${title.toLowerCase().replace(/\s/g, '-')}">
+                    <div class="flex items-center">
+                        <button onclick="navigate('${backPage}')" class="text-gray-400 hover:text-indigo-400 transition mr-4">
                             <!-- Icon Home/Kembali -->
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
                         </button>
                         <h1 class="text-2xl font-bold text-indigo-400">${title}</h1>
-                    </header>
+                    </div>
+                    <span id="status-message-${title.toLowerCase().replace(/\s/g, '-')}" class="text-sm text-gray-400">Memuat data...</span>
+                </header>
+            `;
+        }
+        
+        /**
+         * Template Kartu Ringkasan
+         */
+        function createSummaryCard(value, title, colorClass) {
+            return `
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border-t-4 border-indigo-500">
+                    <p class="text-sm text-gray-400 font-medium">${title}</p>
+                    <p class="text-4xl font-extrabold mt-1 ${colorClass}">${value}</p>
+                    <p class="text-xs text-gray-500 mt-2">Data diambil dari sheet "Ringkasan Stok Palet"</p>
+                </div>
+            `;
+        }
+        
+        /**
+         * Template Kartu Ringkasan Placeholder
+         */
+        function createSummaryCardPlaceholder(value, title) {
+            return `
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border-t-4 border-gray-500">
+                    <p class="text-sm text-gray-400 font-medium">${title}</p>
+                    <p class="text-4xl font-extrabold mt-1 text-gray-500">${value}</p>
+                    <p class="text-xs text-gray-600 mt-2">Tidak ada data ringkasan.</p>
+                </div>
+            `;
+        }
+
+        // --- 9. TAMPILAN PLACEHOLDER MENU LAIN ---
+        function createPlaceholderView(title, subtitle) {
+            return `
+                <div class="p-6 app-view">
+                    ${createHeader(title, 'dashboard')}
                     <div class="bg-gray-800 p-8 rounded-xl shadow-lg text-center mt-10">
                         <h2 class="text-xl font-semibold mb-2 text-gray-200">Fitur ${title}</h2>
                         <p class="text-gray-400 mb-4">${subtitle} - Halaman ini sedang dalam pengembangan.</p>
-                        <p class="text-sm text-gray-500">Saat ini hanya menu "Master Palet" yang sudah terintegrasi dengan data Google Sheet dan menampilkan pewarnaan bersyarat.</p>
+                        <p class="text-sm text-gray-500">Saat ini menu "Master Palet" dan "Stock Palet" sudah terintegrasi.</p>
                         <button onclick="navigate('dashboard')" class="mt-6 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">
                             Kembali ke Menu Utama
                         </button>
@@ -416,7 +523,7 @@
             `;
         }
 
-        // --- 7. EKSEKUSI APLIKASI ---
+        // --- 10. EKSEKUSI APLIKASI ---
         window.onload = () => {
             // Pasang fungsi navigasi ke window agar bisa dipanggil dari onclick
             window.navigate = navigate;
