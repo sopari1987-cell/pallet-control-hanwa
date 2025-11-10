@@ -3,680 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CONTROL PALET HANWA</title>
+    <title>Master Palet Data Viewer</title>
+    <!-- Memuat Tailwind CSS untuk styling yang cepat dan responsif -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome untuk Icon -->
-    <script src="https://kit.fontawesome.com/a1396a92f0.js" crossorigin="anonymous"></script>
-    
     <style>
+        /* Mengatur font default */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a202c; /* Dark Blue/Gray Background */
-            color: #e2e8f0; /* Light text */
+            background-color: #f3f4f6; /* Abu-abu muda */
         }
-        .header-bar {
-            background-color: #2d3748; /* Header darker shade */
+        /* Style untuk container utama (menggunakan flexbox untuk responsivitas) */
+        .data-container {
+            display: grid;
+            gap: 1.5rem; /* Spasi 6 (tailwind) */
+            padding: 1.5rem;
         }
-        .card-dark {
-            background-color: #2d3748;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            transition: transform 0.2s, box-shadow 0.2s;
+        /* Untuk tampilan desktop, gunakan 3 kolom */
+        @media (min-width: 1024px) {
+            .data-container {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
-        .card-dark:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
-        }
-        .input-dark, .select-dark, .textarea-dark {
-            background-color: #4a5568;
-            border: 1px solid #718096;
-            color: #e2e8f0;
-        }
-        .input-dark:focus, .select-dark:focus, .textarea-dark:focus {
-            border-color: #63b3ed;
-            box-shadow: 0 0 0 1px #63b3ed;
-        }
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.8);
-        }
-        .table-dark thead {
-            background-color: #2d3748;
-        }
-        .table-dark tbody tr:hover {
-            background-color: #3b4554;
+        /* Untuk tampilan tablet, gunakan 2 kolom */
+        @media (min-width: 640px) and (max-width: 1023px) {
+            .data-container {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- URL Web App -->
-    <script>
-        // URL Web App Anda
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyDDp6x-07VQr3aSRqXNfWOmMEVofT-8M6NmUFhNrns0-XCeVd55SYrNC7b6qPgiLbj/exec'; 
-        
-        // Nama Sheet
-        const MASTER_SHEET_NAME = 'MASTER PALET';
-        const TRANSACTION_SHEET_NAME = 'Log Transaksi Palet';
-        let masterPaletsData = [];
-
-        // Inisialisasi userId (hanya untuk tampilan)
-        const dummyUserId = "HWN-USER-001";
-        const dummyUserDisplay = "HWN-USER-001";
-    </script>
-
-    <!-- Header / Nav Bar -->
-    <header class="header-bar p-4 flex items-center justify-between sticky top-0 z-10">
-        <div class="flex items-center">
-            <i class="fas fa-boxes text-blue-400 text-xl mr-3"></i>
-            <h1 class="text-xl font-bold text-gray-100">CONTROL PALET HANWA</h1>
-        </div>
-        <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-400 hidden sm:block">User ID: <span id="user-id-display">...</span></span>
-            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">S</div>
-        </div>
+    <!-- Header Aplikasi -->
+    <header class="bg-indigo-600 shadow-md p-4 mb-6">
+        <h1 class="text-3xl font-bold text-white text-center">Master Data Palet</h1>
     </header>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 hidden">
-        <div class="flex flex-col items-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
-            <p class="text-gray-200 mt-3 text-lg">Memuat Data...</p>
+    <!-- Loading State dan Pesan Kesalahan -->
+    <div id="status-message" class="text-center p-4 text-xl font-semibold text-gray-700">
+        Memuat data palet dari Google Sheet...
+    </div>
+
+    <!-- Container untuk Kartu Palet (Tampilan Utama) -->
+    <div id="pallet-cards-container" class="data-container max-w-7xl mx-auto">
+        <!-- Kartu Palet akan dimasukkan di sini oleh JavaScript -->
+    </div>
+
+    <!-- Bagian Data Tabel (Opsional/Detail) -->
+    <div class="max-w-7xl mx-auto p-6 mt-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Detail Data Palet (Tabel)</h2>
+        <div id="table-container" class="bg-white shadow-lg rounded-xl overflow-x-auto p-4">
+            <!-- Tabel data akan dimasukkan di sini oleh JavaScript -->
+            <table id="pallet-table" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <!-- Header tabel akan diisi di sini -->
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- Baris data akan diisi di sini -->
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <main id="app-container" class="p-4 md:p-8">
-        
-        <!-- Dashboard View (Initial View) -->
-        <div id="view-dashboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            <!-- MASTER PALET Card (Icon: fa-pallet) -->
-            <div onclick="switchView('master-list')" class="card-dark p-6 rounded-xl text-center cursor-pointer">
-                <i class="fas fa-pallet text-5xl text-blue-400 mb-3"></i>
-                <h2 class="text-xl font-semibold mb-1">MASTER PALET</h2>
-                <p class="text-sm text-gray-400">Data Induk Palet</p>
-            </div>
 
-            <!-- STOCK PALET Card (Icon: fa-warehouse) -->
-            <div onclick="switchView('stock-summary')" class="card-dark p-6 rounded-xl text-center cursor-pointer">
-                <i class="fas fa-warehouse text-5xl text-blue-400 mb-3"></i>
-                <h2 class="text-xl font-semibold mb-1">STOCK PALET</h2>
-                <p class="text-sm text-gray-400">Ringkasan Stok Palet</p>
-            </div>
+    <!-- Firebase dan Logic JavaScript -->
+    <script type="module">
+        // --- 1. SETUP FIREBASE (MANDATORI SESUAI ATURAN PLATFORM) ---
+        // Variabel global __app_id, __firebase_config, dan __initial_auth_token
+        // disediakan oleh Canvas environment.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-            <!-- TRANSAKSI PALET Card (Icon: fa-truck-loading) -->
-            <div onclick="switchView('transaction-list')" class="card-dark p-6 rounded-xl text-center cursor-pointer">
-                <i class="fas fa-truck-loading text-5xl text-blue-400 mb-3"></i>
-                <h2 class="text-xl font-semibold mb-1">TRANSAKSI PALET</h2>
-                <p class="text-sm text-gray-400">Log Pergerakan Palet</p>
-            </div>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-            <!-- STO PALET Card (Icon: fa-clipboard-check) -->
-            <div onclick="switchView('sto-input')" class="card-dark p-6 rounded-xl text-center cursor-pointer">
-                <i class="fas fa-clipboard-check text-5xl text-blue-400 mb-3"></i>
-                <h2 class="text-xl font-semibold mb-1">STO PALET</h2>
-                <p class="text-sm text-gray-400">Stock Taking Palet</p>
-            </div>
-        </div>
+        let db, auth;
 
-        <!-- Master Palet List View -->
-        <div id="view-master-list" class="hidden">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-100 mb-3 sm:mb-0"><span onclick="switchView('dashboard')" class="cursor-pointer text-blue-400 hover:text-blue-300">HOME</span> / Master Palet</h2>
-                <div class="flex flex-wrap space-x-3">
-                    <button onclick="switchView('dashboard')" class="px-4 py-2 bg-gray-600 text-gray-100 rounded-lg hover:bg-gray-700 transition duration-150 text-sm">
-                        <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-                    </button>
-                    <button onclick="showMasterModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-150 text-sm">
-                        <i class="fas fa-plus mr-2"></i> Tambah Palet
-                    </button>
-                </div>
-            </div>
+        // Inisialisasi Firebase dan Autentikasi
+        async function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
 
-            <!-- Master Palet Table -->
-            <div class="card-dark p-6 rounded-xl">
-                <h3 class="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">Daftar Master Palet (<span id="master-palet-count">0</span>)</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-600 table-dark">
-                        <thead class="bg-gray-700">
-                            <tr>
-                                <!-- Kolom sesuai permintaan user -->
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID Palet</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Nama Palet</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Size</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Lokasi</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tanggal Update</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Jml Digunakan</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Keterangan</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="master-palet-list" class="divide-y divide-gray-700">
-                            <tr><td colspan="9" class="text-center py-4 text-gray-500">Memuat data...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Transaction List View (Log Transaksi Palet) -->
-        <div id="view-transaction-list" class="hidden">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-100 mb-3 sm:mb-0"><span onclick="switchView('dashboard')" class="cursor-pointer text-blue-400 hover:text-blue-300">HOME</span> / Log Transaksi Palet</h2>
-                <div class="flex flex-wrap space-x-3">
-                    <button onclick="switchView('dashboard')" class="px-4 py-2 bg-gray-600 text-gray-100 rounded-lg hover:bg-gray-700 transition duration-150 text-sm">
-                        <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-                    </button>
-                    <button onclick="showTransactionModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150 text-sm">
-                        <i class="fas fa-truck-loading mr-2"></i> Catat Transaksi
-                    </button>
-                </div>
-            </div>
+                // Autentikasi menggunakan token kustom atau anonim
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                console.log("Firebase dan Autentikasi berhasil diinisialisasi.");
+            } catch (error) {
+                console.error("Kesalahan saat inisialisasi Firebase:", error);
+                // Lanjutkan, karena fokus utama adalah fetch Google Sheet
+            }
+        }
 
-            <!-- Transaction Log Table -->
-            <div class="card-dark p-6 rounded-xl">
-                <h3 class="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">Riwayat Transaksi Palet (<span id="transaction-count">0</span>)</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-600 table-dark">
-                        <thead class="bg-gray-700">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Waktu</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID Palet</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tipe Transaksi</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Lokasi Baru</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transaction-list" class="divide-y divide-gray-700">
-                            <tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat data...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+        // --- 2. KONFIGURASI GOOGLE SHEET ---
+        // GANTI NILAI DI BAWAH INI DENGAN DATA SHEET ANDA YANG SEBENARNYA
+        const GOOGLE_SHEET_ID = '1Q-6x0B7Y-p6Dq3s6Uv2P4hT7W5Rz8n0O9h1C2y3I4o5'; // GANTI dengan ID Google Sheet Anda
+        const SHEET_NAME = 'MasterPalet'; // GANTI dengan Nama Sheet Anda (misalnya: Sheet1)
+        const RANGE = 'A:D'; // Opsional: Tentukan kolom yang ingin diambil, misalnya A:D
 
-        <!-- Placeholder views for Stock Summary and STO Input -->
-        <div id="view-stock-summary" class="hidden text-center py-20 text-gray-400">
-            <i class="fas fa-tools text-6xl mb-4"></i>
-            <h2 class="text-2xl font-bold">Ringkasan Stok Palet</h2>
-            <p>Fitur ini sedang dalam pengembangan.</p>
-            <button onclick="switchView('dashboard')" class="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150">
-                Kembali ke Dashboard
-            </button>
-        </div>
-        <div id="view-sto-input" class="hidden text-center py-20 text-gray-400">
-            <i class="fas fa-clipboard-list text-6xl mb-4"></i>
-            <h2 class="text-2xl font-bold">Input Stock Taking Palet (STO)</h2>
-            <p>Fitur ini sedang dalam pengembangan.</p>
-            <button onclick="switchView('dashboard')" class="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150">
-                Kembali ke Dashboard
-            </button>
-        </div>
+        // URL GViz (Google Visualization API Query)
+        const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=${RANGE}`;
 
+        const statusMessageEl = document.getElementById('status-message');
+        const cardsContainerEl = document.getElementById('pallet-cards-container');
+        const tableHeaderEl = document.querySelector('#pallet-table thead');
+        const tableBodyEl = document.querySelector('#pallet-table tbody');
 
-    </main>
+        // --- 3. FUNGSI FETCH DAN PARSE DATA ---
 
-    <!-- Master Palet Modal (Tambah Palet Baru) -->
-    <div id="master-modal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-40 opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="card-dark w-11/12 max-w-lg rounded-xl p-6 transform translate-y-10 transition-transform duration-300">
-            <h3 class="text-xl font-bold mb-4 border-b border-gray-600 pb-2">Tambah Master Palet Baru</h3>
-            <form id="master-palet-form" onsubmit="window.handleMasterPaletSubmit(event)">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="mb-4 md:mb-0">
-                        <label for="masterPaletId" class="block text-sm font-medium mb-1 text-gray-300">ID Palet</label>
-                        <input type="text" id="masterPaletId" name="masterPaletId" placeholder="PS01001 / HNW-A101" required class="w-full p-3 rounded-lg input-dark">
-                    </div>
-                    <div class="mb-4 md:mb-0">
-                        <label for="masterPaletName" class="block text-sm font-medium mb-1 text-gray-300">Nama Palet</label>
-                        <input type="text" id="masterPaletName" name="masterPaletName" placeholder="Nama Model Palet" class="w-full p-3 rounded-lg input-dark" required>
-                    </div>
-                    <div class="mb-4 md:mb-0">
-                        <label for="masterPaletSize" class="block text-sm font-medium mb-1 text-gray-300">Size (cth: 522.6 x 2395)</label>
-                        <input type="text" id="masterPaletSize" name="masterPaletSize" placeholder="522.6 x 2395" required class="w-full p-3 rounded-lg input-dark">
-                    </div>
-                    <div class="mb-4 md:mb-0">
-                        <label for="masterPaletStatus" class="block text-sm font-medium mb-1 text-gray-300">Status</label>
-                        <select id="masterPaletStatus" name="masterPaletStatus" required class="w-full p-3 rounded-lg select-dark">
-                            <option value="Available">Available</option>
-                            <option value="In Use">In Use</option>
-                            <option value="Maintenance">Maintenance</option>
-                        </select>
-                    </div>
-                    <div class="mb-4 md:mb-0">
-                        <label for="masterPaletLocation" class="block text-sm font-medium mb-1 text-gray-300">Lokasi</label>
-                        <input type="text" id="masterPaletLocation" name="masterPaletLocation" placeholder="HANWA / Gudang A" required class="w-full p-3 rounded-lg input-dark">
-                    </div>
-                    <div class="mb-4 md:mb-0">
-                        <label for="masterPaletCount" class="block text-sm font-medium mb-1 text-gray-300">Jumlah Digunakan (Initial)</label>
-                        <input type="number" id="masterPaletCount" name="masterPaletCount" placeholder="0" value="0" min="0" required class="w-full p-3 rounded-lg input-dark">
-                    </div>
-                </div>
+        /**
+         * Mengambil data dari Google Sheet menggunakan API GViz.
+         * @returns {Promise<Object[]|null>} Array data baris atau null jika gagal.
+         */
+        async function fetchSpreadsheetData() {
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL);
+                if (!response.ok) {
+                    throw new Error(`Gagal fetch data: Status ${response.status}`);
+                }
                 
-                <div class="mt-4">
-                    <label for="masterPaletKeterangan" class="block text-sm font-medium mb-1 text-gray-300">Keterangan</label>
-                    <textarea id="masterPaletKeterangan" name="masterPaletKeterangan" rows="3" placeholder="Tambahkan keterangan tambahan (Opsional)" class="w-full p-3 rounded-lg textarea-dark"></textarea>
-                </div>
-
-                <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" onclick="hideModal('master-modal')" class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition duration-150">Batal</button>
-                    <button type="submit" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150">Simpan Palet</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Transaction Modal (Catat Transaksi) -->
-    <div id="transaction-modal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-40 opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="card-dark w-11/12 max-w-lg rounded-xl p-6 transform translate-y-10 transition-transform duration-300">
-            <h3 class="text-xl font-bold mb-4 border-b border-gray-600 pb-2">Catat Transaksi Palet</h3>
-            <form id="transaction-form" onsubmit="window.handleTransactionSubmit(event)">
-                <div class="mb-4">
-                    <label for="transactionPaletId" class="block text-sm font-medium mb-1 text-gray-300">ID Palet</label>
-                    <input type="text" id="transactionPaletId" name="transactionPaletId" placeholder="PS01001" required class="w-full p-3 rounded-lg input-dark">
-                </div>
-                <div class="mb-4">
-                    <label for="transactionType" class="block text-sm font-medium mb-1 text-gray-300">Jenis Transaksi</label>
-                    <select id="transactionType" name="transactionType" required class="w-full p-3 rounded-lg select-dark">
-                        <option value="">Pilih Jenis Transaksi</option>
-                        <option value="Incoming">Masuk Hanwa (Available)</option>
-                        <option value="Outgoing">Keluar/Digunakan Produksi (In Use)</option>
-                        <option value="Transfer">Transfer Lokasi (Status Tetap)</option>
-                        <option value="Maintenance">Perawatan (Maintenance)</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="transactionLocation" class="block text-sm font-medium mb-1 text-gray-300">Lokasi Baru</label>
-                    <input type="text" id="transactionLocation" name="transactionLocation" placeholder="Line Produksi 1 / Gudang B" required class="w-full p-3 rounded-lg input-dark">
-                </div>
-                <div class="mb-6">
-                    <label for="transactionNotes" class="block text-sm font-medium mb-1 text-gray-300">Keterangan</label>
-                    <textarea id="transactionNotes" name="transactionNotes" rows="3" placeholder="Catatan Tambahan (Opsional)" class="w-full p-3 rounded-lg textarea-dark"></textarea>
-                </div>
-
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="hideModal('transaction-modal')" class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition duration-150">Batal</button>
-                    <button type="submit" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-150">Catat Transaksi</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-    <!-- Message/Error Modal -->
-    <div id="message-modal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="bg-white rounded-xl p-6 w-11/12 max-w-sm card">
-            <h3 id="modal-title" class="text-lg font-bold mb-3 text-gray-900">Pesan</h3>
-            <p id="modal-body" class="text-gray-700 mb-4"></p>
-            <button onclick="hideModal('message-modal')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150">Tutup</button>
-        </div>
-    </div>
-
-
-    <script>
-        // --- VIEW SWITCHER ---
-        const switchView = (viewId) => {
-            const views = ['view-dashboard', 'view-master-list', 'view-transaction-list', 'view-stock-summary', 'view-sto-input'];
-            views.forEach(id => {
-                const view = document.getElementById(id);
-                if (view) {
-                    if (id === `view-${viewId}` || id === viewId) {
-                        view.classList.remove('hidden');
-                    } else {
-                        view.classList.add('hidden');
-                    }
+                // Text response dari GViz API harus diproses. 
+                // Formatnya: /*O_o*/\ngoogle.visualization.Query.setResponse({...});
+                const text = await response.text();
+                
+                // Menghilangkan awalan dan akhiran yang tidak perlu untuk mendapatkan JSON murni
+                const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+                const data = JSON.parse(jsonText);
+                
+                if (data.status !== 'ok') {
+                     throw new Error(`Status query tidak OK: ${data.errors ? data.errors[0].message : 'Kesalahan tidak diketahui'}`);
                 }
-            });
-            // Reload data only when entering list views
-            if (viewId === 'master-list' || viewId === 'transaction-list') {
-                loadAllData();
-            }
-        };
 
-        // --- MODAL UTILITIES ---
-        const showModal = (modalId) => {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.classList.add('opacity-100', 'pointer-events-auto');
-            // Ensure the modal content is visible
-            const content = modal.querySelector('.card-dark') || modal.querySelector('.bg-white');
-            if(content) {
-                content.classList.remove('translate-y-10');
-                content.classList.add('translate-y-0');
+                return parseGVizData(data);
+                
+            } catch (error) {
+                console.error("Kesalahan saat mengambil data Google Sheet:", error);
+                statusMessageEl.textContent = `🚨 GAGAL MEMUAT DATA: ${error.message}. Pastikan ID Sheet, Nama Sheet, dan Izin akses publik sudah benar.`;
+                cardsContainerEl.innerHTML = '';
+                return null;
             }
         }
 
-        const hideModal = (modalId) => {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('opacity-100', 'pointer-events-auto');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            // Reset form if it exists
-            const form = modal.querySelector('form');
-            if(form) form.reset();
+        /**
+         * Mengurai struktur data GViz menjadi array objek JavaScript yang sederhana.
+         * @param {Object} data - Objek respons GViz yang telah diparsing.
+         * @returns {Object[]} Array data baris.
+         */
+        function parseGVizData(data) {
+            const columns = data.table.cols.map(col => ({
+                id: col.id,
+                label: col.label || col.id // Menggunakan label atau id sebagai header
+            }));
+            const rows = data.table.rows;
+            const result = [];
+
+            for (const row of rows) {
+                const rowObject = {};
+                for (let i = 0; i < columns.length; i++) {
+                    const colId = columns[i].label; // Gunakan label sebagai kunci objek
+                    // Nilai data ada di 'v'
+                    rowObject[colId] = row.c[i] ? (row.c[i].f || row.c[i].v) : '';
+                }
+                result.push(rowObject);
+            }
+            
+            // Kolom header/label
+            const headers = columns.map(c => c.label);
+            
+            return { data: result, headers: headers };
         }
 
-        window.showMasterModal = () => showModal('master-modal');
-        window.showTransactionModal = () => showModal('transaction-modal');
-        
-        window.showMessageModal = (message, type = 'info') => {
-            const modal = document.getElementById('message-modal');
-            const title = document.getElementById('modal-title');
-            const body = document.getElementById('modal-body');
 
-            // Apply light theme style to message modal (for better visibility)
-            modal.querySelector('.card').classList.remove('card-dark');
-            modal.querySelector('.card').classList.add('bg-white');
+        // --- 4. FUNGSI RENDERING (DISPLAY) DATA ---
+
+        /**
+         * Menampilkan data yang sudah diurai ke dalam kartu dan tabel.
+         * @param {Object} parsedData - Objek yang berisi { data: Array, headers: Array }.
+         */
+        function displayData(parsedData) {
+            const { data, headers } = parsedData;
             
-            title.textContent = type === 'error' ? 'Gagal!' : (type === 'success' ? 'Berhasil!' : 'Pesan');
-            body.textContent = message;
-
-            title.className = `text-lg font-bold mb-3 ${type === 'error' ? 'text-red-600' : (type === 'success' ? 'text-green-600' : 'text-blue-600')}`;
-            body.className = `text-gray-700 mb-4`;
-
-            showModal('message-modal');
-        };
-
-
-        // --- FETCH UTILITY (Sama seperti sebelumnya, dengan backoff) ---
-        const callWebApp = async (payload) => {
-            // ... (Kode callWebApp yang sama, tidak diulang untuk keringkasan) ...
-            if (WEB_APP_URL === 'YOUR_WEB_APP_URL_HERE') {
-                throw new Error("ERROR: URL Web App belum diset. Harap deploy Apps Script dan ganti URL Anda.");
-            }
-            
-            const url = `${WEB_APP_URL}?type=${payload.action}`;
-            
-            const options = {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams(payload).toString()
-            };
-
-            const MAX_RETRIES = 5;
-            let response = null;
-            let lastError = null;
-
-            for (let i = 0; i < MAX_RETRIES; i++) {
-                try {
-                    response = await fetch(url, options);
-                    if (response.status !== 429 && response.ok) {
-                        break; 
-                    } else if (response.status === 429) {
-                        const delay = Math.pow(2, i) * 1000 + (Math.random() * 1000); 
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        lastError = new Error(`Request throttled (429). Retrying...`);
-                    } else {
-                        throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-                    }
-                } catch (error) {
-                    lastError = error;
-                    if (i < MAX_RETRIES - 1) {
-                         const delay = Math.pow(2, i) * 1000 + (Math.random() * 1000);
-                         await new Promise(resolve => setTimeout(resolve, delay));
-                    }
-                }
-            }
-
-            if (!response || !response.ok) {
-                throw lastError || new Error("Gagal terhubung ke Apps Script setelah beberapa kali coba.");
-            }
-            
-            const json = await response.json();
-            
-            if (json.status === 'error') {
-                throw new Error(json.message);
-            }
-            return json;
-        };
-
-
-        // --- RENDERING FUNCTIONS ---
-        const renderMasterPalets = (palets) => {
-            const list = document.getElementById('master-palet-list');
-            document.getElementById('master-palet-count').textContent = palets.length;
-            list.innerHTML = ''; 
-
-            if (palets.length === 0) {
-                list.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-500">Belum ada data Master Palet.</td></tr>';
+            if (data.length === 0) {
+                statusMessageEl.textContent = "Data tidak ditemukan di Sheet yang ditentukan.";
                 return;
             }
 
-            palets.forEach(palet => {
-                const row = document.createElement('tr');
-                let statusClass = 'bg-yellow-600';
-                if (palet.Status === 'Available') statusClass = 'bg-green-600'; 
-                else if (palet.Status === 'In Use') statusClass = 'bg-red-600';
-                
-                // Pastikan nama kolom sesuai dengan keys dari data Google Sheet
-                row.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-100">${palet.ID_Palet}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${palet.Nama_Palet || '-'}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${palet.Size || '-'}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass} text-white">${palet.Status}</span></td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${palet.Lokasi}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${palet.Tanggal_update || palet.Terakhir_Diperbarui}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${palet.Jumlah_Digunakan || 0}</td>
-                    <td class="px-4 py-3 text-sm text-gray-400 max-w-xs truncate" title="${palet.Keterangan || palet.Kapasitas || ''}">${palet.Keterangan || palet.Kapasitas || '-'}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                        <button onclick="window.handleDeleteMasterPalet('${palet.ID_Palet}')" class="text-red-400 hover:text-red-300 ml-2"><i class="fas fa-trash"></i> Hapus</button>
-                    </td>
+            statusMessageEl.textContent = `Menampilkan ${data.length} data Palet.`;
+            cardsContainerEl.innerHTML = ''; // Kosongkan container kartu
+
+            // 4a. Rendering Kartu Palet
+            data.forEach(item => {
+                const card = createPalletCard(item);
+                cardsContainerEl.appendChild(card);
+            });
+
+            // 4b. Rendering Tabel Detail
+            renderPalletTable(data, headers);
+        }
+
+        /**
+         * Membuat elemen kartu untuk setiap data Palet.
+         * @param {Object} item - Objek data Palet (misalnya: { "Pallet ID": "P-001", "Status": "Tersedia", ... }).
+         * @returns {HTMLElement} Elemen div kartu yang sudah di-styling.
+         */
+        function createPalletCard(item) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-xl shadow-xl p-6 transition duration-300 hover:shadow-2xl hover:scale-[1.02] border-t-4 border-indigo-500';
+
+            // Menentukan warna status
+            const status = item['Status'] || 'Tidak Diketahui';
+            let statusColor = 'bg-gray-200 text-gray-800';
+            if (status.toLowerCase().includes('tersedia')) {
+                statusColor = 'bg-green-100 text-green-700 border-green-500';
+            } else if (status.toLowerCase().includes('dipakai')) {
+                statusColor = 'bg-yellow-100 text-yellow-700 border-yellow-500';
+            } else if (status.toLowerCase().includes('rusak')) {
+                statusColor = 'bg-red-100 text-red-700 border-red-500';
+            }
+
+            // Membangun konten kartu
+            let content = `
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-2xl font-extrabold text-indigo-700 leading-tight">
+                        ${item['Pallet ID'] || 'N/A'}
+                    </h3>
+                    <span class="text-sm font-semibold px-3 py-1 rounded-full ${statusColor} border border-opacity-50">
+                        ${status}
+                    </span>
+                </div>
+                <div class="space-y-2 text-gray-600">
+            `;
+
+            // Tambahkan semua field data ke dalam kartu (kecuali Pallet ID dan Status yang sudah di atas)
+            const keys = Object.keys(item).filter(key => key !== 'Pallet ID' && key !== 'Status');
+            keys.forEach(key => {
+                content += `
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="font-medium text-gray-500">${key}:</span>
+                        <span class="font-semibold text-gray-700">${item[key] || '-'}</span>
+                    </div>
                 `;
-                list.appendChild(row);
             });
-        };
 
-        const renderTransactions = (transactions) => {
-            const list = document.getElementById('transaction-list');
-            document.getElementById('transaction-count').textContent = transactions.length;
-            list.innerHTML = ''; 
+            content += `
+                </div>
+                <button class="mt-4 w-full bg-indigo-500 text-white py-2 rounded-lg font-bold hover:bg-indigo-600 transition duration-150 text-sm">
+                    Lihat Detail &rarr;
+                </button>
+            `;
 
-            if (transactions.length === 0) {
-                list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Belum ada data Log Transaksi Palet.</td></tr>';
-                return;
-            }
+            card.innerHTML = content;
+            return card;
+        }
 
-            // Sort: Newest first
-            transactions.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
-
-            transactions.forEach(tx => {
-                const row = document.createElement('tr');
-                let typeColor = 'text-gray-300';
-                if (tx.Tipe_Transaksi.toLowerCase().includes('masuk')) typeColor = 'text-green-400';
-                else if (tx.Tipe_Transaksi.toLowerCase().includes('keluar') || tx.Tipe_Transaksi.toLowerCase().includes('produksi')) typeColor = 'text-red-400';
-                
-                row.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-400">${tx.Timestamp}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-100">${tx.ID_Palet}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm ${typeColor}">${tx.Tipe_Transaksi}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${tx.Lokasi_Baru}</td>
-                    <td class="px-4 py-3 text-sm text-gray-400 max-w-xs truncate" title="${tx.Catatan || ''}">${tx.Catatan || '-'}</td>
-                `;
-                list.appendChild(row);
+        /**
+         * Merender data Palet ke dalam elemen tabel.
+         * @param {Object[]} data - Array data Palet.
+         * @param {string[]} headers - Array header kolom.
+         */
+        function renderPalletTable(data, headers) {
+            // Render Header Tabel
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                th.textContent = header;
+                headerRow.appendChild(th);
             });
-        };
+            tableHeaderEl.innerHTML = '';
+            tableHeaderEl.appendChild(headerRow);
 
+            // Render Body Tabel
+            tableBodyEl.innerHTML = '';
+            data.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700';
+                    td.textContent = item[header] || '-';
+                    tr.appendChild(td);
+                });
+                tableBodyEl.appendChild(tr);
+            });
+        }
 
-        // --- MASTER PALET HANDLERS ---
-        window.handleMasterPaletSubmit = async (event) => {
-            event.preventDefault();
-            hideModal('master-modal');
-            LOADING_OVERLAY.classList.remove('hidden');
+        // --- 5. EKSEKUSI APLIKASI ---
 
-            const form = event.target;
-            const formData = new FormData(form);
-
-            const paletId = formData.get('masterPaletId').toUpperCase().trim();
+        // Fungsi utama untuk menjalankan aplikasi
+        async function runApplication() {
+            await initializeFirebase(); // Inisialisasi Firebase terlebih dahulu
             
-            const paletData = {
-                ID_Palet: paletId,
-                Nama_Palet: formData.get('masterPaletName'), // Kolom baru
-                Size: formData.get('masterPaletSize'),
-                Status: formData.get('masterPaletStatus'),
-                Lokasi: formData.get('masterPaletLocation'),
-                Tanggal_update: new Date().toLocaleString('id-ID'), // Menggunakan nama kolom baru
-                Jumlah_Digunakan: formData.get('masterPaletCount'), // Kolom baru
-                Keterangan: formData.get('masterPaletKeterangan'), // Menggunakan nama kolom baru
-            };
-
-            const payload = {
-                action: 'addMaster',
-                data: JSON.stringify(paletData)
-            };
-
-            try {
-                const result = await callWebApp(payload);
-                showMessageModal(result.message, 'success');
-                form.reset();
-                // Muat ulang data jika sedang di view list
-                if (document.getElementById('view-master-list').classList.contains('hidden') === false) {
-                    await loadAllData(false); 
-                }
-            } catch (error) {
-                console.error("Gagal menyimpan Palet:", error);
-                showMessageModal(`Gagal menyimpan Palet: ${error.message}. Cek konsol untuk detail.`, 'error');
-            } finally {
-                LOADING_OVERLAY.classList.add('hidden');
-            }
-        };
-
-        window.handleDeleteMasterPalet = async (paletId) => {
-            const confirmed = window.confirm(`Yakin ingin menghapus Master Palet ID: ${paletId}? Tindakan ini tidak dapat dibatalkan.`);
-            if (!confirmed) {
-                return;
-            }
-
-            LOADING_OVERLAY.classList.remove('hidden');
-
-            const payload = {
-                action: 'deleteMaster',
-                ID_Palet: paletId
-            };
-
-            try {
-                const result = await callWebApp(payload);
-                showMessageModal(result.message, 'success');
-                await loadAllData(false);
-            } catch (error) {
-                console.error("Gagal menghapus Palet:", error);
-                showMessageModal(`Gagal menghapus Palet: ${error.message}. Cek konsol untuk detail.`, 'error');
-            } finally {
-                LOADING_OVERLAY.classList.add('hidden');
-            }
-        };
-
-        // --- TRANSACTION HANDLERS ---
-        window.handleTransactionSubmit = async (event) => {
-            event.preventDefault();
-            hideModal('transaction-modal');
-            LOADING_OVERLAY.classList.remove('hidden');
-
-            const form = event.target;
-            const formData = new FormData(form);
-
-            const paletId = formData.get('transactionPaletId').toUpperCase().trim();
-            const transactionType = formData.get('transactionType');
-            const newLocation = formData.get('transactionLocation');
-            const notes = formData.get('transactionNotes');
-
-            try {
-                // 1. Check Palet Existence (Master Palet data must be loaded)
-                if(masterPaletsData.length === 0) await loadAllData(false); 
-                const existingPalet = masterPaletsData.find(p => p.ID_Palet === paletId);
-                if (!existingPalet) {
-                    throw new Error(`Master Palet ID ${paletId} tidak ditemukan. Harap daftarkan palet ini terlebih dahulu.`);
-                }
-                
-                // 2. Determine New Status & Update Count
-                let newStatus = existingPalet.Status;
-                let newCount = parseInt(existingPalet.Jumlah_Digunakan || 0, 10);
-                
-                if (transactionType === 'Incoming') {
-                    newStatus = 'Available';
-                    // Asumsi: Incoming adalah palet kembali, jadi Jumlah Digunakan bisa dikurangi (jika logis) atau tetap. Kita biarkan tetap 0 jika kembali ke Available.
-                    newCount = 0; 
-                } else if (transactionType === 'Outgoing') {
-                    newStatus = 'In Use';
-                    newCount += 1; // Palet digunakan
-                } else if (transactionType === 'Maintenance') {
-                    newStatus = 'Maintenance';
-                } // Transfer status tetap
-
-                // 3. Prepare Update Data
-                const masterUpdateData = {
-                    ID_Palet: paletId,
-                    Lokasi: newLocation,
-                    Status: newStatus,
-                    Tanggal_update: new Date().toLocaleString('id-ID'), // Menggunakan nama kolom baru
-                    Jumlah_Digunakan: newCount,
-                };
-                
-                const transactionData = {
-                    ID_Palet: paletId,
-                    Tipe_Transaksi: transactionType,
-                    Lokasi_Baru: newLocation,
-                    Catatan: notes,
-                    Timestamp: new Date().toLocaleString('id-ID'),
-                };
-
-                // 4. Send combined action to Web App
-                const payload = {
-                    action: 'recordTransaction',
-                    masterUpdate: JSON.stringify(masterUpdateData),
-                    newTransaction: JSON.stringify(transactionData)
-                };
-
-                const result = await callWebApp(payload);
-
-                showMessageModal(`Transaksi Palet ${paletId} (${transactionType}) berhasil dicatat. Status baru: ${newStatus}.`, 'success');
-                form.reset();
-                if (document.getElementById('view-transaction-list').classList.contains('hidden') === false) {
-                    await loadAllData(false); 
-                }
-                
-            } catch (error) {
-                console.error("Gagal mencatat transaksi. Detail Error:", error);
-                showMessageModal(`Gagal mencatat transaksi: ${error.message}. Cek konsol untuk detail.`, 'error');
-            } finally {
-                LOADING_OVERLAY.classList.add('hidden');
-            }
-        };
-
-
-        // --- DATA INITIALIZATION ---
-        const loadAllData = async (showLoading = true) => {
-            if(showLoading) LOADING_OVERLAY.classList.remove('hidden');
+            const parsedData = await fetchSpreadsheetData();
             
-            try {
-                // 1. Fetch Master Palets
-                const masterResult = await callWebApp({ action: 'getAllData', sheetName: MASTER_SHEET_NAME });
-                masterPaletsData = masterResult.data; 
-                if (document.getElementById('view-master-list').classList.contains('hidden') === false) {
-                    renderMasterPalets(masterPaletsData);
-                }
-
-                // 2. Fetch Transactions
-                const transactionResult = await callWebApp({ action: 'getAllData', sheetName: TRANSACTION_SHEET_NAME });
-                if (document.getElementById('view-transaction-list').classList.contains('hidden') === false) {
-                    renderTransactions(transactionResult.data); 
-                }
-
-            } catch (error) {
-                console.error("Gagal memuat data:", error);
-                if(showLoading) {
-                    showMessageModal(`Gagal memuat data. Pastikan Apps Script sudah di-deploy dan URL sudah benar. Detail Error: ${error.message}`, 'error');
-                }
-            } finally {
-                if(showLoading) LOADING_OVERLAY.classList.add('hidden');
+            if (parsedData) {
+                displayData(parsedData);
             }
         }
 
+        window.onload = runApplication;
 
-        // --- INITIALIZATION ---
-        window.onload = () => {
-            document.getElementById('user-id-display').textContent = dummyUserDisplay;
-            switchView('dashboard');
-            // Muat data di background saat pertama kali load
-            loadAllData(false); 
-        };
     </script>
+
+    <!-- Memuat icon (lucide-react, meskipun ini HTML, kita gunakan font-awesome placeholder jika diperlukan) -->
+    <!-- Tidak perlu memuat icon eksternal karena menggunakan teks/Tailwind -->
 </body>
 </html>
