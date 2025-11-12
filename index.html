@@ -46,9 +46,26 @@
             /* Styling header yang ditingkatkan */
             background-color: #18181b; /* Zinc 900 (Lebih gelap) */
             color: #9ca3af;
+            /* HAPUS border-bottom, akan diatur per baris */
+            /* border-bottom: 2px solid #22c55e; */ /* Garis bawah hijau (Green 500) */
+            /* HAPUS position: sticky; akan diatur per baris */
+            /* position: sticky; */
+            /* top: 0; */
+            /* z-index: 10; */
+        }
+        /* (BARU) Baris header (judul) */
+        .pallet-table thead tr:first-child th {
             border-bottom: 2px solid #22c55e; /* Garis bawah hijau (Green 500) */
             position: sticky;
             top: 0;
+            z-index: 10;
+        }
+        /* (BARU) Baris filter (input) */
+        .pallet-table thead tr:nth-child(2) th {
+            background-color: #18181b; /* Pastikan background sama */
+            border-bottom: 1px solid #3f3f46; /* Garis bawah abu-abu */
+            position: sticky;
+            top: 37px; /* (py-3 + text-xs) ~ 12px+12px+13px. Sesuaikan jika perlu */
             z-index: 10;
         }
         .pallet-table tr:nth-child(even) {
@@ -113,6 +130,7 @@
         
         // --- DATA STATE GLOBAL ---
         let masterPalletData = []; // Menyimpan semua data Master Palet
+        let masterPalletHeaders = []; // (BARU) Menyimpan header master palet
         let historyPalletData = []; // (BARU) Menyimpan data history untuk filter
         let historyPalletHeaders = []; // (BARU) Menyimpan header tabel history
         let selectedPalletIds = []; // Menyimpan ID Palet yang sedang dipilih untuk transaksi
@@ -385,7 +403,9 @@
                     <h2 class="text-xl font-bold text-gray-300 mb-3 border-b border-gray-800 pb-2">Detail Data Palet</h2>
                     <div id="table-container" class="shadow-lg rounded-xl overflow-x-auto">
                         <table id="pallet-table-master" class="pallet-table min-w-full divide-y divide-gray-700 rounded-xl">
-                            <thead class="bg-gray-800"><tr></tr></thead>
+                            <thead class="bg-gray-800">
+                                <!-- Konten header (judul dan filter) akan diisi oleh fetchMasterPalletData -->
+                            </thead>
                             <tbody class="divide-y divide-gray-700"></tbody>
                         </table>
                     </div>
@@ -397,51 +417,126 @@
 
         async function fetchMasterPalletData() {
             const statusMessageEl = document.getElementById(getStatusMessageId(MASTER_PALET_TITLE)); 
-            const tableHeaderEl = document.querySelector('#pallet-table-master thead tr');
+            const tableHeadEl = document.querySelector('#pallet-table-master thead');
             const tableBodyEl = document.querySelector('#pallet-table-master tbody');
             const errorBoxEl = document.getElementById('error-box-master');
             
-            if (!statusMessageEl || !tableHeaderEl || !tableBodyEl) return; 
+            if (!statusMessageEl || !tableHeadEl || !tableBodyEl) return; 
             
             tableBodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Memuat data...</td></tr>';
 
             await fetchGoogleSheetData(MASTER_PALLET_URL, statusMessageEl, errorBoxEl, (parsedData, statusEl) => {
                 const { data, headers } = parsedData;
                 masterPalletData = data; 
+                masterPalletHeaders = headers; // (BARU) Simpan header di state global
                 
                 if (data.length === 0) {
                     statusEl.textContent = "Data tidak ditemukan.";
-                    tableHeaderEl.innerHTML = '';
+                    tableHeadEl.innerHTML = '';
                     tableBodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">Tidak ada data Master Palet yang tersedia.</td></tr>';
                     return;
                 }
 
                 statusEl.textContent = `${data.length} Data Palet Ditemukan`;
 
-                // Diubah ke text-green-300
-                tableHeaderEl.innerHTML = headers.map(header => 
-                    `<th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-green-300">${header}</th>`
-                ).join('');
+                // (MODIFIKASI) Render baris header dan baris filter
+                // Baris 1: Headers
+                const headerRow = `
+                    <tr class="bg-gray-800">
+                        ${headers.map(header => 
+                            `<th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-green-300">${header}</th>`
+                        ).join('')}
+                    </tr>
+                `;
 
-                tableBodyEl.innerHTML = data.map((item, index) => {
-                    const status = item['Status'] || '';
-                    const lokasi = item['Lokasi'] || '';
+                // Baris 2: Filters
+                const filterRow = `
+                    <tr class="bg-gray-800">
+                        ${headers.map(header => `
+                            <th class="p-1 align-top">
+                                <input type="text" 
+                                       class="w-full px-2 py-1 text-xs bg-zinc-700 border border-zinc-600 rounded text-white placeholder-zinc-400 focus:ring-green-500 focus:border-green-500 master-filter-input" 
+                                       placeholder="Filter..."
+                                       data-header="${header}"
+                                       onkeyup="filterMasterPalletTable()">
+                            </th>
+                        `).join('')}
+                    </tr>
+                `;
+                
+                tableHeadEl.innerHTML = headerRow + filterRow;
 
-                    const rowColorClass = getRowColorClass(status, lokasi);
-                    // Diubah ke bg-zinc-800 / bg-zinc-700
-                    const rowBgClass = (index % 2 === 0 ? 'bg-zinc-800' : 'bg-zinc-700');
-                    
-                    return `
-                        <tr class="${rowBgClass} ${rowColorClass}">
-                            ${headers.map(header => 
-                                `<td class="px-6 py-3 whitespace-nowrap text-sm">${item[header] || '-'}</td>`
-                            ).join('')}
-                        </tr>
-                    `;
-                }).join('');
+                // (MODIFIKASI) Panggil fungsi render body terpisah
+                renderMasterPalletTableBody(data);
             });
         }
         
+        /**
+         * (BARU) Fungsi terpisah untuk me-render <tbody> tabel Master Palet
+         * @param {Array} data - Array data yang akan dirender
+         */
+        function renderMasterPalletTableBody(data) {
+            const tableBodyEl = document.querySelector('#pallet-table-master tbody');
+            if (!tableBodyEl) return;
+            
+            const headersCount = masterPalletHeaders.length || 10;
+
+            if (data.length === 0) {
+                tableBodyEl.innerHTML = `<tr><td colspan="${headersCount}" class="text-center py-4 text-gray-500">Data tidak ditemukan untuk filter ini.</td></tr>`;
+                return;
+            }
+
+            tableBodyEl.innerHTML = data.map((item, index) => {
+                const status = item['Status'] || '';
+                const lokasi = item['Lokasi'] || '';
+
+                const rowColorClass = getRowColorClass(status, lokasi);
+                const rowBgClass = (index % 2 === 0 ? 'bg-zinc-800' : 'bg-zinc-700');
+                
+                return `
+                    <tr class="${rowBgClass} ${rowColorClass}">
+                        ${masterPalletHeaders.map(header => 
+                            `<td class="px-6 py-3 whitespace-nowrap text-sm">${item[header] || '-'}</td>`
+                        ).join('')}
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        /**
+         * (BARU) Fungsi untuk memfilter dan me-render ulang tabel master palet
+         */
+        function filterMasterPalletTable() {
+            const filterInputs = document.querySelectorAll('#pallet-table-master .master-filter-input');
+            const filters = {};
+
+            // 1. Kumpulkan semua nilai filter
+            filterInputs.forEach(input => {
+                const header = input.dataset.header;
+                const value = input.value.toUpperCase().trim();
+                if (value) {
+                    filters[header] = value;
+                }
+            });
+
+            const filterKeys = Object.keys(filters);
+            let filteredData = masterPalletData; // Mulai dengan data lengkap
+
+            // 2. Terapkan filter jika ada
+            if (filterKeys.length > 0) {
+                filteredData = masterPalletData.filter(item => {
+                    // Periksa apakah item lolos SEMUA filter
+                    return filterKeys.every(header => {
+                        const itemValue = String(item[header] || '').toUpperCase();
+                        return itemValue.includes(filters[header]);
+                    });
+                });
+            }
+            
+            // 3. Render ulang body tabel dengan data yang sudah difilter
+            renderMasterPalletTableBody(filteredData);
+        }
+
         function getRowColorClass(status, lokasi) {
             const s = String(status).toUpperCase().trim();
             const l = String(lokasi).toUpperCase().trim();
@@ -1190,6 +1285,7 @@
             window.renderPalletIdCards = renderPalletIdCards;
             window.togglePalletSelection = togglePalletSelection; 
             window.filterHistoryTable = filterHistoryTable; // (BARU) Daftarkan fungsi filter
+            window.filterMasterPalletTable = filterMasterPalletTable; // (BARU) Daftarkan fungsi filter Master
             
             initializeFirebase(); 
         };
