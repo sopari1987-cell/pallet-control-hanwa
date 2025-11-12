@@ -38,6 +38,19 @@
             color: #ffffff; /* Putih */
             min-height: 100vh;
         }
+        /* (BARU) Style untuk Halaman Login */
+        .login-view {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .login-card {
+            background-color: #27272a; /* Zinc 800 */
+            border-top: 4px solid #22c55e; /* Aksen hijau */
+        }
+        
         /* Style untuk Tabel */
         .pallet-table {
             background-color: #27272a; /* Zinc 800 */
@@ -46,21 +59,15 @@
             /* Styling header yang ditingkatkan */
             background-color: #18181b; /* Zinc 900 (Lebih gelap) */
             color: #9ca3af;
-            /* HAPUS border-bottom, akan diatur per baris */
-            /* border-bottom: 2px solid #22c55e; */ /* Garis bawah hijau (Green 500) */
-            /* HAPUS position: sticky; akan diatur per baris */
-            /* position: sticky; */
-            /* top: 0; */
-            /* z-index: 10; */
         }
-        /* (BARU) Baris header (judul) */
+        /* Baris header (judul) */
         .pallet-table thead tr:first-child th {
             border-bottom: 2px solid #22c55e; /* Garis bawah hijau (Green 500) */
             position: sticky;
             top: 0;
             z-index: 10;
         }
-        /* (BARU) Baris filter (input) */
+        /* Baris filter (input) */
         .pallet-table thead tr:nth-child(2) th {
             background-color: #18181b; /* Pastikan background sama */
             border-bottom: 1px solid #3f3f46; /* Garis bawah abu-abu */
@@ -88,7 +95,6 @@
             border: 1px solid #22c55e; /* Border hijau (Green 500) */
             transition: all 0.2s;
             cursor: pointer;
-            /* Lebih ringkas */
             padding: 0.5rem 0.75rem; 
             font-size: 0.875rem; /* text-sm */
         }
@@ -119,7 +125,7 @@
     <script type="module">
         // --- 1. SETUP FIREBASE (MANDATORI SESUAI ATURAN PLATFORM) ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -129,38 +135,69 @@
         let db, auth, userId = null;
         
         // --- DATA STATE GLOBAL ---
+        let currentUser = null; // (BARU) Menyimpan data user { username, role }
         let masterPalletData = []; // Menyimpan semua data Master Palet
-        let masterPalletHeaders = []; // (BARU) Menyimpan header master palet
-        let historyPalletData = []; // (BARU) Menyimpan data history untuk filter
-        let historyPalletHeaders = []; // (BARU) Menyimpan header tabel history
+        let masterPalletHeaders = []; // Menyimpan header master palet
+        let historyPalletData = []; // Menyimpan data history untuk filter
+        let historyPalletHeaders = []; // Menyimpan header tabel history
         let selectedPalletIds = []; // Menyimpan ID Palet yang sedang dipilih untuk transaksi
 
+        /**
+         * (MODIFIKASI) Inisialisasi Firebase
+         * Dibuat async dan mengembalikan Promise.
+         * Tidak lagi me-render app, hanya setup auth.
+         */
         async function initializeFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
+            if (auth) return; // Sudah diinisialisasi
+
+            return new Promise((resolve) => {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    const authCallback = (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            console.log("Firebase Auth State Changed. User ID:", userId);
+                            resolve();
+                        } else {
+                            // Jika tidak ada token, login anonim
+                            signInAnonymously(auth).then(cred => {
+                                userId = cred.user.uid;
+                                console.log("Firebase Auth State Changed (Anonymous). User ID:", userId);
+                                resolve();
+                            }).catch(err => {
+                                 console.error("Anonymous sign-in failed:", err);
+                                 userId = 'guest-' + crypto.randomUUID().substring(0, 8);
+                                 resolve(); // Selesaikan juga jika gagal
+                            });
+                        }
+                    };
+                    
+                    const unsubscribe = onAuthStateChanged(auth, (user) => {
+                        unsubscribe(); // Hentikan listener
+                        
+                        if (initialAuthToken) {
+                            signInWithCustomToken(auth, initialAuthToken).then(cred => {
+                                userId = cred.user.uid;
+                                console.log("Firebase Auth (Custom Token). User ID:", userId);
+                                resolve();
+                            }).catch(err => {
+                                console.warn("Custom token failed, trying anonymous.", err);
+                                authCallback(null); // Fallback ke anonim
+                            });
+                        } else {
+                            authCallback(user); // Panggil handler standar
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error("Kesalahan saat inisialisasi Firebase:", error);
+                    userId = 'guest-error-' + crypto.randomUUID().substring(0, 8);
+                    resolve(); // Selesaikan promise agar app tidak macet
                 }
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                    } else {
-                        userId = 'guest-' + crypto.randomUUID().substring(0, 8);
-                    }
-                    console.log("Firebase Auth State Changed. User ID:", userId);
-                    // Render ulang setelah auth
-                    renderApp(localStorage.getItem('currentPage') || 'dashboard');
-                });
-            } catch (error) {
-                console.error("Kesalahan saat inisialisasi Firebase:", error);
-                // Render tetap berjalan meskipun ada error Firebase
-                renderApp(localStorage.getItem('currentPage') || 'dashboard');
-            }
+            });
         }
         
         // --- 2. NAVIGASI STATE ---
@@ -174,11 +211,26 @@
         }
 
         // --- 3. RENDERING UTAMA ---
+        /**
+         * (MODIFIKASI) Render App
+         * Sekarang memiliki 'login' dan proteksi halaman.
+         */
         function renderApp(page) {
             const container = document.getElementById('app-container');
+            
+            // (BARU) Proteksi halaman: Jika halaman bukan login dan user tidak ada, paksa ke login
+            if (page !== 'login' && !currentUser) {
+                console.log("User not authenticated. Redirecting to login.");
+                page = 'login';
+            }
+            
             container.innerHTML = ''; // Bersihkan konten
 
             switch (page) {
+                // (BARU) Halaman Login
+                case 'login':
+                    container.innerHTML = createLoginView();
+                    break;
                 case 'masterPalet':
                     container.innerHTML = createMasterPalletView();
                     fetchMasterPalletData(); // Panggil fungsi fetch data
@@ -188,12 +240,10 @@
                     fetchStockPalletData(); // Panggil fungsi fetch data baru
                     break;
                 case 'transaksiPalet':
-                    // Pastikan state multi-select direset saat masuk view
                     selectedPalletIds = []; 
                     container.innerHTML = createTransactionPalletView();
                     fetchMasterDataForTransaction(); // Panggil fungsi fetch data Master baru
                     break;
-                // --- (BARU) Navigasi untuk History Palet ---
                 case 'historyPalet':
                     container.innerHTML = createHistoryPalletView();
                     fetchHistoryPalletData();
@@ -215,32 +265,44 @@
 
 
         // --- 4. TAMPILAN DASHBOARD (Menu Utama) ---
+        /**
+         * (MODIFIKASI) createDashboardView
+         * Menampilkan username/role dan tombol logout.
+         */
         function createDashboardView() {
+            // Fallback jika currentUser tiba-tiba null
+            const username = currentUser ? currentUser.username : '...';
+            const role = currentUser ? currentUser.role : '...';
+
             return `
                 <div class="p-6">
                     <header class="flex justify-between items-center mb-10">
                         <div class="flex items-center">
-                            <!-- Icon Palet (SVG sederhana) - Diubah ke Hijau -->
                             <svg class="w-8 h-8 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10M10 7v10M16 7v10M20 4v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2h12a2 2 0 012 2z"></path>
                             </svg>
                             <h1 class="text-3xl font-bold text-gray-100 uppercase">Control Palet Hanwa</h1>
                         </div>
+                        <!-- (MODIFIKASI) Tampilan User dan Tombol Logout -->
                         <div class="flex items-center text-sm text-gray-400">
-                            <span class="mr-3 hidden sm:inline">User ID: ${userId || 'Memuat...'}</span>
-                            <!-- Icon User -->
+                            <span class="mr-3 hidden sm:inline">User: <span class="font-bold text-green-400">${username}</span> (${role})</span>
                             <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.939 13.939 0 0112 16c2.585 0 5.043.682 7.079 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
+                            <!-- (BARU) Tombol Logout -->
+                            <button onclick="handleLogout()" title="Logout" class="ml-2 p-1 rounded-full hover:bg-zinc-700 transition">
+                                <svg class="w-6 h-6 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                            </button>
                         </div>
                     </header>
 
-                    <!-- (MODIFIKASI) Grid Menu Utama (Diubah ke 5 kolom di layar besar) -->
+                    <!-- Grid Menu Utama (5 kolom) -->
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
                         
                         <!-- MASTER PALET -->
                         <div onclick="navigate('masterPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <!-- Icon Kubus (Master) -->
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10m-4-11l-4 2.12V17M16 12l4 2.12V17"></path>
                             </svg>
@@ -252,7 +314,6 @@
 
                         <!-- STOCK PALET -->
                         <div onclick="navigate('stockPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <!-- Icon Stack (Stok) -->
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 12V3h16v9m-4-4l-4 4-4-4m8 8h-8v4h8v-4z"></path>
                             </svg>
@@ -264,7 +325,6 @@
 
                         <!-- TRANSAKSI PALET -->
                         <div onclick="navigate('transaksiPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <!-- Icon Log/Kunci (Transaksi/Pergerakan) -->
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-1.447 3.382l-.675.337M4 12a7 7 0 1014 0 7 7 0 01-14 0z"></path>
                             </svg>
@@ -276,7 +336,6 @@
 
                         <!-- STO PALET -->
                         <div onclick="navigate('stoPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <!-- Icon Checklist (STO/Stock Taking) -->
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                             </svg>
@@ -286,9 +345,8 @@
                             </div>
                         </div>
                         
-                        <!-- (BARU) HISTORY PALET -->
+                        <!-- HISTORY PALET -->
                         <div onclick="navigate('historyPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <!-- Icon History (List/Log) -->
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -301,7 +359,7 @@
                     </div>
                     
                     <footer class="mt-12 text-center text-xs text-grey-600">
-                        Aplikasi Kontrol Palet (v2.1 ) - Elaborated by SOPARI-HSSI0293
+                        Aplikasi Kontrol Palet (v3.0) - Elaborated by SOPARI-HSSI0293
                     </footer>
                 </div>
             `;
@@ -309,31 +367,23 @@
         
         // --- 5. SETUP GOOGLE SHEET URLS ---
         
-        // GANTI NILAI DI BAWAH INI DENGAN DATA SHEET ANDA YANG SEBENARNYA
         const GOOGLE_SHEET_ID = '1YiIDIa0Ysi-O0k4askOtd8Qf66KnQuJxlLMngDlqM1A'; // GANTI dengan ID Google Sheet Anda
         const MASTER_SHEET_NAME = 'MASTER PALET'; 
         const STOCK_SHEET_NAME = 'Ringkasan Stok Palet'; 
-        const TRANSACTION_SHEET_NAME = 'Log Transaksi Palet Batch'; // Nama sheet untuk Transaksi DAN History
-        const RANGE = 'A:H'; // Range default, bisa disesuaikan jika perlu
+        const TRANSACTION_SHEET_NAME = 'Log Transaksi Palet Batch'; 
+        const USERCONTROL_SHEET_NAME = 'Usercontrol'; // (BARU) Sheet untuk login
+        const RANGE = 'A:H'; 
 
         const MASTER_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${MASTER_SHEET_NAME}&range=${RANGE}`;
         const STOCK_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${STOCK_SHEET_NAME}&range=${RANGE}`;
-        // (BARU) URL untuk History Palet (menggunakan sheet yang sama dengan transaksi)
         const HISTORY_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${TRANSACTION_SHEET_NAME}&range=${RANGE}`;
+        // (BARU) URL untuk User Control (Range A:C untuk Username, Password, Role)
+        const USERCONTROL_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${USERCONTROL_SHEET_NAME}&range=A:C`;
         
-        // --- PENTING: CONFIGURASI BACKEND UNTUK SUBMIT DATA ---
-        // GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT APPS SCRIPT ANDA
         const MOCK_API_DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbwiq9RP1jZykmw8a4W1PNgoUgfekOxCkAiHhnLtzFX8YB1I8TTPnzgkhNYQZH6I-MZJ/exec'; 
 
         // --- 6. FUNGSI FETCH DATA UNIVERSAL (Read Only) ---
         
-        /**
-         * Mengambil data dari Google Sheet.
-         * @param {string} url - URL GViz Google Sheet.
-         * @param {HTMLElement} statusEl - Elemen untuk menampilkan status loading/sukses.
-         * @param {HTMLElement} errorBoxEl - Elemen untuk menampilkan pesan error.
-         * @param {function} successCallback - Callback yang dipanggil saat data berhasil diurai.
-         */
         async function fetchGoogleSheetData(url, statusEl, errorBoxEl, successCallback) {
             if (statusEl) statusEl.textContent = 'Memuat data...';
             if (errorBoxEl) errorBoxEl.classList.add('hidden');
@@ -343,7 +393,6 @@
                 if (!response.ok) throw new Error(`Status ${response.status}`);
                 
                 const text = await response.text();
-                // Membersihkan respon dari Google GViz
                 const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
                 const data = JSON.parse(jsonText);
                 
@@ -361,6 +410,8 @@
                     errorBoxEl.textContent = `🚨 GAGAL MEMUAT DATA: ${error.message}. Pastikan ID Sheet, Nama Sheet, dan Izin akses publik sudah benar.`;
                     errorBoxEl.classList.remove('hidden');
                 }
+                // (BARU) Melempar error agar handleLogin bisa menangkapnya
+                throw error;
             }
         }
         
@@ -376,13 +427,11 @@
             const rows = data.table.rows;
             const result = [];
 
-            // Pastikan baris data tidak kosong (header saja)
             if (rows.length > 0) {
                 for (const row of rows) {
                     const rowObject = {};
                     for (let i = 0; i < columns.length; i++) {
                         const colLabel = columns[i].label;
-                        // Ambil nilai yang diformat (f) jika ada, jika tidak, ambil nilai mentah (v)
                         rowObject[colLabel] = row.c[i] ? (row.c[i].f || row.c[i].v) : '';
                     }
                     result.push(rowObject);
@@ -391,6 +440,181 @@
             
             return { data: result, headers: columns.map(c => c.label) };
         }
+
+        // --- (BARU) LOGIC UNTUK LOGIN ---
+        
+        /**
+         * (BARU) Membuat tampilan Login
+         */
+        function createLoginView() {
+            return `
+                <div class="login-view app-view">
+                    <div class="login-card w-full max-w-sm p-8 rounded-lg shadow-2xl">
+                        <div class="flex items-center justify-center mb-6">
+                            <svg class="w-10 h-10 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10M10 7v10M16 7v10M20 4v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2h12a2 2 0 012 2z"></path>
+                            </svg>
+                            <h1 class="text-2xl font-bold text-gray-100 uppercase">Control Palet</h1>
+                        </div>
+                        
+                        <form id="login-form" onsubmit="handleLogin(event)">
+                            <div class="mb-4">
+                                ${createFormInput('Username', 'loginUsername', 'text', true, 'Masukkan username...')}
+                            </div>
+                            <div class="mb-6">
+                                ${createFormInput('Password', 'loginPassword', 'password', true, 'Masukkan password...')}
+                            </div>
+                            
+                            <!-- (BARU) Kotak Pesan Error Login -->
+                            <div id="login-error-message" class="hidden p-3 rounded-lg text-sm mb-4 font-medium bg-red-800 text-white" role="alert"></div>
+
+                            <button type="submit" id="login-submit-btn" class="btn-primary w-full bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition">
+                                Login
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+        
+        /**
+         * (BARU) Handle proses login
+         */
+        async function handleLogin(event) {
+            event.preventDefault();
+            const usernameEl = document.getElementById('loginUsername');
+            const passwordEl = document.getElementById('loginPassword');
+            const errorBox = document.getElementById('login-error-message');
+            const submitBtn = document.getElementById('login-submit-btn');
+
+            if (!usernameEl || !passwordEl || !errorBox || !submitBtn) return;
+            
+            const username = usernameEl.value.trim();
+            const password = passwordEl.value.trim();
+            
+            if (!username || !password) {
+                errorBox.textContent = "Username dan Password tidak boleh kosong.";
+                errorBox.classList.remove('hidden');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Memverifikasi...";
+            errorBox.classList.add('hidden');
+
+            try {
+                // (BARU) Callback untuk memproses data user
+                const loginCheckCallback = async (parsedData, statusEl) => {
+                    // (MODIFIKASI) Ambil 'data' dan 'headers'
+                    const { data, headers } = parsedData;
+                    
+                    // (MODIFIKASI) Validasi jumlah header
+                    if (headers.length < 3) {
+                        errorBox.textContent = "Format sheet 'Usercontrol' salah. Butuh 3 kolom (Username, Password, Role).";
+                        errorBox.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = "Login";
+                        return;
+                    }
+
+                    // (MODIFIKASI) Dapatkan nama kolom dari URUTAN, bukan hardcode
+                    const userCol = headers[0]; // Kolom A (cth: "Username" atau "username")
+                    const passCol = headers[1]; // Kolom B (cth: "Password" atau "password")
+                    const roleCol = headers[2]; // Kolom C (cth: "Role" atau "role")
+
+                    const foundUser = data.find(user => 
+                        // (MODIFIKASI) Gunakan nama kolom dinamis
+                        String(user[userCol] || '').trim() === username &&
+                        String(user[passCol] || '').trim() === password
+                    );
+                    
+                    if (foundUser) {
+                        // SUKSES LOGIN
+                        console.log("Login sukses:", foundUser);
+                        currentUser = { 
+                            // (MODIFIKASI) Gunakan nama kolom dinamis
+                            username: String(foundUser[userCol]).trim(), 
+                            role: String(foundUser[roleCol] || 'User').trim() 
+                        };
+                        
+                        // Simpan di session storage
+                        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        
+                        // Inisialisasi Firebase (penting untuk userId)
+                        await initializeFirebase();
+                        
+                        // Render dashboard
+                        renderApp('dashboard');
+                        
+                    } else {
+                        // GAGAL LOGIN
+                        errorBox.textContent = "Username atau Password salah.";
+                        errorBox.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = "Login";
+                    }
+                };
+                
+                // Ambil data dari sheet 'Usercontrol'
+                await fetchGoogleSheetData(USERCONTROL_URL, null, errorBox, loginCheckCallback);
+
+            } catch (error) {
+                console.error("Gagal fetch data user:", error);
+                errorBox.textContent = "Gagal terhubung ke server. Periksa koneksi Anda.";
+                errorBox.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Login";
+            }
+        }
+        
+        /**
+         * (BARU) Handle proses logout
+         */
+        function handleLogout() {
+            console.log("Logging out...");
+            // Hapus data sesi
+            sessionStorage.removeItem('currentUser');
+            localStorage.removeItem('currentPage');
+            currentUser = null;
+            
+            // Reset state Firebase
+            if (auth) {
+                signOut(auth);
+            }
+            auth = null;
+            db = null;
+            userId = null;
+            
+            // Reset data cache
+            masterPalletData = [];
+            masterPalletHeaders = [];
+            historyPalletData = [];
+            historyPalletHeaders = [];
+            
+            // Kembali ke login
+            renderApp('login');
+        }
+        
+        /**
+         * (BARU) Memeriksa status login saat memuat halaman
+         */
+        async function checkSessionAndRender() {
+            const storedUser = sessionStorage.getItem('currentUser');
+            
+            if (storedUser) {
+                console.log("Sesi ditemukan, melanjutkan...");
+                currentUser = JSON.parse(storedUser);
+                // Inisialisasi Firebase
+                await initializeFirebase();
+                // Render halaman terakhir atau dashboard
+                renderApp(localStorage.getItem('currentPage') || 'dashboard');
+            } else {
+                console.log("Tidak ada sesi, menampilkan login.");
+                // Hanya render login, tidak perlu tunggu Firebase
+                renderApp('login');
+            }
+        }
+
 
         // --- 7. LOGIC UNTUK MASTER PALET (Tabel Detail) ---
         const MASTER_PALET_TITLE = 'Master Palet';
@@ -428,7 +652,7 @@
             await fetchGoogleSheetData(MASTER_PALLET_URL, statusMessageEl, errorBoxEl, (parsedData, statusEl) => {
                 const { data, headers } = parsedData;
                 masterPalletData = data; 
-                masterPalletHeaders = headers; // (BARU) Simpan header di state global
+                masterPalletHeaders = headers; // Simpan header di state global
                 
                 if (data.length === 0) {
                     statusEl.textContent = "Data tidak ditemukan.";
@@ -439,7 +663,7 @@
 
                 statusEl.textContent = `${data.length} Data Palet Ditemukan`;
 
-                // (MODIFIKASI) Render baris header dan baris filter
+                // Render baris header dan baris filter
                 // Baris 1: Headers
                 const headerRow = `
                     <tr class="bg-gray-800">
@@ -466,14 +690,13 @@
                 
                 tableHeadEl.innerHTML = headerRow + filterRow;
 
-                // (MODIFIKASI) Panggil fungsi render body terpisah
+                // Panggil fungsi render body terpisah
                 renderMasterPalletTableBody(data);
             });
         }
         
         /**
-         * (BARU) Fungsi terpisah untuk me-render <tbody> tabel Master Palet
-         * @param {Array} data - Array data yang akan dirender
+         * Fungsi terpisah untuk me-render <tbody> tabel Master Palet
          */
         function renderMasterPalletTableBody(data) {
             const tableBodyEl = document.querySelector('#pallet-table-master tbody');
@@ -504,7 +727,7 @@
         }
         
         /**
-         * (BARU) Fungsi untuk memfilter dan me-render ulang tabel master palet
+         * Fungsi untuk memfilter dan me-render ulang tabel master palet
          */
         function filterMasterPalletTable() {
             const filterInputs = document.querySelectorAll('#pallet-table-master .master-filter-input');
@@ -563,7 +786,6 @@
 
                     <h2 class="text-xl font-bold text-gray-300 mb-4 border-b border-gray-800 pb-2">Ringkasan Stok Palet Berdasarkan Lokasi</h2>
                     
-                    <!-- Kontainer Kartu Ringkasan -->
                     <div id="stock-summary-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <!-- Kartu akan diisi di sini -->
                     </div>
@@ -615,16 +837,13 @@
                     grandTotal += totalValue;
                 });
 
-                // Diubah ke text-green-400
                 summaryContainerEl.innerHTML = createSummaryCard(grandTotal.toLocaleString('id-ID'), 'Total Palet Hanwa', 'text-green-400');
 
-                // Diubah ke text-green-300
                 tableHeaderEl.innerHTML = headers.map(header => 
                     `<th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-green-300">${header}</th>`
                 ).join('');
 
                 tableBodyEl.innerHTML = data.map((item, index) => {
-                    // Diubah ke bg-zinc-800 / bg-zinc-700
                     const rowBgClass = (index % 2 === 0 ? 'bg-zinc-800' : 'bg-zinc-700');
                     return `
                         <tr class="${rowBgClass} text-gray-200">
@@ -641,7 +860,6 @@
         const TRANSACTION_PALET_TITLE = 'Transaksi Palet';
 
         function createTransactionPalletView() {
-            // Mendapatkan tanggal hari ini dalam format YYYY-MM-DD
             const today = new Date().toISOString().split('T')[0];
             
             return `
@@ -653,28 +871,23 @@
                             Gunakan formulir ini untuk mencatat pergerakan <span class="font-bold text-green-300">beberapa</span> palet sekaligus.
                         </p>
 
-                        <!-- Kotak Pesan Status -->
                         <div id="transaction-message-box" class="hidden p-3 rounded-lg text-sm mb-4 font-medium" role="alert"></div>
 
                         <form id="transaction-form" onsubmit="submitTransaction(event)">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                 
-                                <!-- NAMA PALET -->
                                 <div>
                                     ${createFormSelect('Nama Palet', 'namaPalet', [], true, 'updateSizePallet')}
                                 </div>
                                 
-                                <!-- SIZE PALET -->
                                 <div>
                                     ${createFormSelect('Size Palet', 'sizePalet', [], true, 'renderPalletIdCards')}
                                 </div>
 
-                                <!-- Tanggal Transaksi -->
                                 <div>
                                     ${createFormInput('Tanggal Transaksi', 'tanggalTransaksi', 'date', true, '', today)}
                                 </div>
                                 
-                                <!-- Jenis Transaksi (Opsi baru dan Lokasi/Status akan diderivasi dari sini) -->
                                 <div>
                                     ${createFormSelect('Jenis Transaksi', 'jenisTransaksi', [
                                         { value: 'DIGUNAKAN PRODUKSI', label: 'di Gunakan Produksi' },
@@ -683,16 +896,12 @@
                                     ], true)}
                                 </div>
                                 
-                                <!-- Lokasi Awal dan Status Akhir Dihapus karena sudah otomatis -->
-
-                                <!-- Keterangan (Textarea) -->
                                 <div class="md:col-span-2">
                                     <label for="keterangan" class="block text-sm font-medium text-gray-300 mb-1">Keterangan (Opsional)</label>
                                     <textarea id="keterangan" name="keterangan" rows="3" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 focus:ring-green-500 focus:border-green-500"></textarea>
                                 </div>
                             </div>
 
-                            <!-- Kontainer Kartu ID Palet -->
                             <div class="mt-8">
                                 <h3 class="text-lg font-bold text-gray-300 mb-3 border-b border-gray-700 pb-1">1. Pilih ID Palet Tersedia <span id="selected-count" class="text-green-400 text-sm font-normal">(0 Palet Dipilih)</span></h3>
                                 <div id="pallet-id-card-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
@@ -700,7 +909,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Display ID Palet yang dipilih -->
                             <div class="mt-6 p-4 bg-gray-700 rounded-lg border border-green-500">
                                 <h4 class="text-sm font-semibold text-green-300 mb-2">2. ID Palet yang akan Diproses:</h4>
                                 <div id="selected-ids-display" class="flex flex-wrap gap-2 min-h-[2.5rem]">
@@ -710,7 +918,6 @@
                             
                             <div class="mt-8 pt-4 border-t border-gray-700 flex justify-end">
                                 <button type="submit" id="submit-btn" class="btn-primary bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition">
-                                    <!-- PERBAIKAN ERROR: Membungkus teks dalam <span> baru -->
                                     <span id="submit-btn-text">Kirim Transaksi</span> (<span id="submit-count">0</span> Palet)
                                 </button>
                             </div>
@@ -720,11 +927,6 @@
             `;
         }
         
-        // --- LOGIC BARU/MODIFIKASI UNTUK MULTI-SELECT ---
-
-        /**
-         * Mengambil data Master Palet dan mengisi dropdown Nama Palet.
-         */
         async function fetchMasterDataForTransaction() {
             const statusMessageEl = document.getElementById(getStatusMessageId(TRANSACTION_PALET_TITLE)); 
             const namaPaletEl = document.getElementById('namaPalet');
@@ -743,7 +945,6 @@
                     return;
                 }
 
-                // Ambil Nama Palet unik dan pastikan nilainya tidak kosong
                 const uniqueNames = [...new Set(data.map(item => String(item['Nama Palet']).trim()).filter(name => name))];
                 const options = uniqueNames.map(name => ({ value: name, label: name }));
                 namaPaletEl.innerHTML = createOptionHtml(options, 'Pilih Nama Palet');
@@ -754,10 +955,6 @@
             await fetchGoogleSheetData(MASTER_PALLET_URL, statusMessageEl, {classList:{add:()=>{}, remove:()=>{}}}, updateMasterData);
         }
         
-        /**
-         * Dipanggil saat Nama Palet diubah. Mengisi dropdown Size Palet.
-         * Telah diperbaiki: menggunakan .trim() untuk robust filtering.
-         */
         function updateSizePallet() {
             const namaPaletEl = document.getElementById('namaPalet');
             const sizePaletEl = document.getElementById('sizePalet');
@@ -766,18 +963,15 @@
             
             const namaPalet = namaPaletEl.value.trim();
             
-            // Reset elemen size
             sizePaletEl.innerHTML = createOptionHtml([], 'Pilih Size Palet');
             sizePaletEl.disabled = true;
             
-            // Reset state dan tampilan
             selectedPalletIds = []; 
             updateSelectedDisplay();
-            renderPalletIdCards(); // Panggil ulang untuk menampilkan pesan "Pilih Size"
+            renderPalletIdCards(); 
 
             if (!namaPalet) return;
 
-            // PERBAIKAN: Gunakan .trim() pada data master saat filtering
             const filteredBySize = masterPalletData.filter(item => 
                 String(item['Nama Palet']).trim() === namaPalet
             );
@@ -797,23 +991,18 @@
             sizePaletEl.disabled = false;
         }
 
-        /**
-         * Dipanggil saat Size Palet diubah. Merender kartu ID Palet.
-         */
         function renderPalletIdCards() {
             const namaPaletEl = document.getElementById('namaPalet');
             const sizePaletEl = document.getElementById('sizePalet');
             const container = document.getElementById('pallet-id-card-container');
             
-            if (!container) return; // Exit jika elemen tidak ada
+            if (!container) return; 
             
             const namaPalet = namaPaletEl ? namaPaletEl.value.trim() : '';
             const sizePalet = sizePaletEl ? sizePaletEl.value.trim() : '';
             
-            // Bersihkan kartu, jaga pesan status
             container.innerHTML = `<p class="text-gray-500 col-span-full" id="id-card-status">Memfilter ID Palet...</p>`;
             
-            // Reset state multi-select
             selectedPalletIds = []; 
             updateSelectedDisplay(); 
 
@@ -823,12 +1012,10 @@
                 return;
             }
 
-            // 1. Filter data berdasarkan Nama Palet dan Size (menggunakan trim)
             const filteredData = masterPalletData.filter(item => 
                 String(item['Nama Palet']).trim() === namaPalet && String(item['Size']).trim() === sizePalet
             );
             
-            // Hapus pesan status placeholder
             const existingStatusEl = document.getElementById('id-card-status');
             if (existingStatusEl) existingStatusEl.remove();
 
@@ -837,39 +1024,30 @@
                 return;
             }
 
-            // 2. Render kartu untuk setiap ID Palet (hanya menampilkan ID)
             filteredData.forEach(item => {
                 const idPalet = item['ID Palet'];
-                if (!idPalet) return; // Lewati jika ID Palet kosong
+                if (!idPalet) return; 
                 
                 const card = document.createElement('div');
                 card.id = `card-${idPalet}`;
-                // Diubah ke hover:ring-green-500
                 card.className = `id-card rounded-lg text-center shadow-md font-mono font-semibold hover:ring-2 hover:ring-green-500 transition`;
                 card.textContent = idPalet;
-                
-                // Tambahkan event listener untuk menoggel pilihan
                 card.onclick = () => togglePalletSelection(idPalet);
                 
                 container.appendChild(card);
             });
         }
         
-        /**
-         * Menangani penambahan/penghapusan ID Palet dari array pilihan.
-         */
         function togglePalletSelection(idPalet) {
             const index = selectedPalletIds.indexOf(idPalet);
             const card = document.getElementById(`card-${idPalet}`);
             if (!card) return;
 
             if (index > -1) {
-                // Hapus dari array (Deselect)
                 selectedPalletIds.splice(index, 1);
                 card.classList.remove('selected');
                 showMessage('info', `ID Palet ${idPalet} dibatalkan.`);
             } else {
-                // Tambahkan ke array (Select)
                 selectedPalletIds.push(idPalet);
                 card.classList.add('selected');
                 showMessage('info', `ID Palet ${idPalet} ditambahkan. Total: ${selectedPalletIds.length}`);
@@ -878,18 +1056,13 @@
             updateSelectedDisplay();
         }
         
-        /**
-         * Memperbarui tampilan daftar ID yang sudah dipilih.
-         */
         function updateSelectedDisplay() {
             const displayEl = document.getElementById('selected-ids-display');
             const submitCountEl = document.getElementById('submit-count');
             const selectedCountEl = document.getElementById('selected-count');
             
-            // Jika elemen tidak ada, keluar
             if (!submitCountEl || !selectedCountEl) return;
             
-            // Perbarui jumlah di tombol submit dan header
             submitCountEl.textContent = selectedPalletIds.length;
             selectedCountEl.textContent = `(${selectedPalletIds.length} Palet Dipilih)`;
 
@@ -897,7 +1070,6 @@
                 if (selectedPalletIds.length === 0) {
                     displayEl.innerHTML = '<span class="text-gray-400 text-sm">Belum ada palet yang dipilih.</span>';
                 } else {
-                    // Tampilkan tag untuk setiap ID Palet yang dipilih
                     displayEl.innerHTML = selectedPalletIds.map(id => 
                         `<span class="selected-id-tag font-mono">${id}</span>`
                     ).join('');
@@ -907,9 +1079,6 @@
         
         // --- HELPER FUNCTIONS ---
         
-        /**
-         * Helper untuk membuat input form
-         */
         function createFormInput(label, id, type, required, placeholder, value = '', disabled = false) {
             const requiredAttr = required ? 'required' : '';
             const disabledAttr = disabled ? 'disabled' : '';
@@ -925,10 +1094,6 @@
             `;
         }
 
-        /**
-         * Helper untuk membuat select form
-         * @param {string} onChangeFunc - Nama fungsi yang akan dipanggil saat perubahan terjadi.
-         */
         function createFormSelect(label, id, options, required, onChangeFunc = '') {
             const requiredAttr = required ? 'required' : '';
             const onChangeAttr = onChangeFunc ? `onchange="${onChangeFunc}()"` : '';
@@ -944,9 +1109,6 @@
             `;
         }
         
-        /**
-         * Helper untuk membuat HTML options
-         */
         function createOptionHtml(options, defaultLabel) {
              const optionHtml = options.map(opt => 
                 `<option value="${opt.value}">${opt.label}</option>`
@@ -955,9 +1117,6 @@
             return `<option value="" disabled selected>${defaultLabel}</option>${optionHtml}`;
         }
         
-        /**
-         * Fungsi untuk menampilkan pesan status (Sukses/Gagal/Info)
-         */
         function showMessage(type, message) {
             const box = document.getElementById('transaction-message-box');
             if (!box) return;
@@ -974,14 +1133,10 @@
             }
         }
 
-        /**
-         * Handler untuk submit form Transaksi Palet (Multi-Palet)
-         */
         async function submitTransaction(event) {
             event.preventDefault();
             const form = event.target;
             const submitBtn = document.getElementById('submit-btn');
-            // Dapatkan kedua elemen span secara terpisah untuk menghindari error
             const submitBtnTextEl = document.getElementById('submit-btn-text');
             const submitCountEl = document.getElementById('submit-count');
             
@@ -998,71 +1153,57 @@
             }
 
             submitBtn.disabled = true;
-            // Hanya ubah teks, bukan seluruh tombol
             submitBtnTextEl.textContent = 'Mengirim...';
             submitCountEl.textContent = selectedPalletIds.length; 
             
             showMessage('loading', `Mengirim data untuk ${selectedPalletIds.length} palet, mohon tunggu...`);
 
-            // --- PERUBAHAN LOGIKA PENGIRIMAN DATA ---
-
-            // 1. Ambil semua data input dari form (gunakan trim untuk keamanan)
             const namaPalet = formData.get('namaPalet').trim();
             const sizePalet = formData.get('sizePalet').trim();
             const tanggalTransaksi = formData.get('tanggalTransaksi').trim();
             const jenisTransaksi = formData.get('jenisTransaksi').trim();
             const keterangan = formData.get('keterangan').trim() || '-';
-            
-            // 2. Gabungkan ID Palet yang dipilih menjadi satu string, dipisahkan koma
             const idPaletString = selectedPalletIds.join(',');
-
-            // 3. Tambahkan info waktu 
             const now = new Date();
             const jamTransaksi = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            // 4. Buat SATU objek transaksi tunggal untuk batch ini
             const batchTransaction = {
-                // Kolom di Google Sheet harus sesuai urutan:
                 'Nama Palet': namaPalet,
                 'Size': sizePalet, 
                 'Tanggal Transaksi': tanggalTransaksi,
                 'Jenis Transaksi': jenisTransaksi,
-                'ID Palet': idPaletString, // Data yang digabungkan
-                'Jumlah Palet': selectedPalletIds.length, // Tambahan info jumlah
-                'Jam Transaksi': jamTransaksi, // Tambahan info jam
+                'ID Palet': idPaletString, 
+                'Jumlah Palet': selectedPalletIds.length,
+                'Jam Transaksi': jamTransaksi,
                 'Keterangan': keterangan,
+                // (BARU) Menambahkan info user yang submit
+                'Submitted By': currentUser ? currentUser.username : (userId || 'Unknown') 
             };
 
-            // 5. Siapkan array transaksi (hanya berisi satu objek)
             const transactionsToSend = [batchTransaction];
             
             console.log(`Satu Transaksi Batch yang akan dikirim ke sheet ${TRANSACTION_SHEET_NAME}:`, batchTransaction);
             
-            // 6. Kirim array data ke Apps Script
             const payload = {
-                sheetName: TRANSACTION_SHEET_NAME, // Target sheet name
-                transactions: transactionsToSend, // Array berisi SATU objek batch
-                submittedBy: userId,
+                sheetName: TRANSACTION_SHEET_NAME, 
+                transactions: transactionsToSend, 
+                submittedBy: currentUser ? currentUser.username : (userId || 'Unknown'), // Kirim user yang login
                 timestamp: now.toLocaleString('id-ID'),
             };
 
             try {
-                // ** PERHATIAN: MOCK API URL DIGUNAKAN. GANTI DENGAN ASLI! **
                 await fetch(MOCK_API_DEPLOY_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload), // Kirim payload lengkap
+                    body: JSON.stringify(payload), 
                 });
                 
-                // Beri penundaan sedikit untuk simulasi kiriman
                 await new Promise(resolve => setTimeout(resolve, 1500)); 
 
-                // Pesan sukses disesuaikan
                 showMessage('success', `✅ Berhasil mencatat 1 Transaksi Batch (untuk ${selectedPalletIds.length} palet) ke ${TRANSACTION_SHEET_NAME}!`);
                 form.reset();
                 
-                // Reset Dropdown, State, dan Kartu (Logika ini tetap sama)
                 selectedPalletIds = [];
                 updateSelectedDisplay(); 
                 
@@ -1081,37 +1222,27 @@
                 showMessage('error', `❌ Gagal menyimpan transaksi batch. Pastikan Apps Script (sheet ${TRANSACTION_SHEET_NAME}) siap menerima data ini. Detail error: ${error.message}`);
             } finally {
                 submitBtn.disabled = false;
-                // Reset teks tombol dengan benar
                 submitBtnTextEl.textContent = 'Kirim Transaksi';
-                // Reset jumlah di tombol
                 if(selectedPalletIds.length === 0) {
                     submitCountEl.textContent = '0';
                 }
             }
         }
         
-        /**
-         * Template Header Universal
-         */
         function createHeader(title, backPage) {
              return `
                 <header class="flex justify-between items-center mb-6 border-b border-gray-700 pb-3" id="header-${title.toLowerCase().replace(/\s/g, '-')}">
                     <div class="flex items-center">
                         <button onclick="navigate('${backPage}')" class="text-gray-400 hover:text-green-400 transition mr-4">
-                            <!-- Icon Home/Kembali -->
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
                         </button>
                         <h1 class="text-2xl font-bold text-green-400">${title}</h1>
                     </div>
-                    <!-- Menggunakan ID yang konsisten untuk pengambilan data -->
                     <span id="${getStatusMessageId(title)}" class="text-sm text-gray-400">Siap mencatat</span>
                 </header>
             `;
         }
         
-        /**
-         * Template Kartu Ringkasan
-         */
         function createSummaryCard(value, title, colorClass) {
             return `
                 <div class="bg-zinc-800 p-5 rounded-xl shadow-xl border-t-4 border-green-500">
@@ -1122,9 +1253,6 @@
             `;
         }
         
-        /**
-         * Template Kartu Ringkasan Placeholder
-         */
         function createSummaryCardPlaceholder(value, title) {
             return `
                 <div class="bg-zinc-800 p-5 rounded-xl shadow-xl border-t-4 border-gray-500">
@@ -1135,18 +1263,14 @@
             `;
         }
 
-        // --- 10. LOGIC BARU UNTUK HISTORY PALET ---
+        // --- 10. LOGIC UNTUK HISTORY PALET ---
         const HISTORY_PALET_TITLE = 'History Palet';
 
-        /**
-         * (BARU) Membuat tampilan untuk History Palet
-         */
         function createHistoryPalletView() {
             return `
                 <div id="history-pallet-view" class="app-view p-6">
                     ${createHeader(HISTORY_PALET_TITLE, 'dashboard')}
                     
-                    <!-- (BARU) Kotak Filter -->
                     <div class="mb-4">
                         <label for="history-filter" class="block text-sm font-medium text-gray-300 mb-1">Filter berdasarkan ID Palet:</label>
                         <input type="text" id="history-filter" onkeyup="filterHistoryTable()" 
@@ -1167,9 +1291,6 @@
             `;
         }
 
-        /**
-         * (BARU) Mengambil data untuk History Palet
-         */
         async function fetchHistoryPalletData() {
             const statusMessageEl = document.getElementById(getStatusMessageId(HISTORY_PALET_TITLE)); 
             const tableHeaderEl = document.querySelector('#pallet-table-history thead tr');
@@ -1183,7 +1304,6 @@
             await fetchGoogleSheetData(HISTORY_PALLET_URL, statusMessageEl, errorBoxEl, (parsedData, statusEl) => {
                 const { data, headers } = parsedData;
                 
-                // Simpan data dan header di state global
                 historyPalletData = data; 
                 historyPalletHeaders = headers;
                 
@@ -1196,19 +1316,14 @@
 
                 statusEl.textContent = `${data.length} Log Transaksi Ditemukan`;
 
-                // Render Header
                 tableHeaderEl.innerHTML = headers.map(header => 
                     `<th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-green-300">${header}</th>`
                 ).join('');
                 
-                // Render Body Awal
                 renderHistoryTableBody(data);
             });
         }
         
-        /**
-         * (BARU) Fungsi untuk memfilter dan me-render ulang tabel history
-         */
         function filterHistoryTable() {
             const filterInput = document.getElementById('history-filter');
             if (!filterInput) return;
@@ -1216,13 +1331,10 @@
             const filterValue = filterInput.value.toUpperCase().trim();
             
             if (!filterValue) {
-                // Jika filter kosong, tampilkan semua data
                 renderHistoryTableBody(historyPalletData);
                 return;
             }
             
-            // Filter data berdasarkan kolom 'ID Palet'
-            // Ini akan mencari kecocokan parsial dalam string ID Palet (misal: "P-001,P-002" akan cocok jika dicari "P-001")
             const filteredData = historyPalletData.filter(item => {
                 const idPaletString = String(item['ID Palet'] || '').toUpperCase();
                 return idPaletString.includes(filterValue);
@@ -1231,10 +1343,6 @@
             renderHistoryTableBody(filteredData);
         }
         
-        /**
-         * (BARU) Fungsi terpisah untuk me-render <tbody> tabel history
-         * @param {Array} data - Array data yang akan dirender
-         */
         function renderHistoryTableBody(data) {
             const tableBodyEl = document.querySelector('#pallet-table-history tbody');
             if (!tableBodyEl) return;
@@ -1284,10 +1392,15 @@
             window.updateSizePallet = updateSizePallet;
             window.renderPalletIdCards = renderPalletIdCards;
             window.togglePalletSelection = togglePalletSelection; 
-            window.filterHistoryTable = filterHistoryTable; // (BARU) Daftarkan fungsi filter
-            window.filterMasterPalletTable = filterMasterPalletTable; // (BARU) Daftarkan fungsi filter Master
+            window.filterHistoryTable = filterHistoryTable; 
+            window.filterMasterPalletTable = filterMasterPalletTable;
             
-            initializeFirebase(); 
+            // (BARU) Daftarkan fungsi login/logout
+            window.handleLogin = handleLogin;
+            window.handleLogout = handleLogout;
+            
+            // (MODIFIKASI) Jalankan pemeriksaan sesi
+            checkSessionAndRender();
         };
 
     </script>
