@@ -215,19 +215,17 @@
             });
         }
         
-        // --- 2. NAVIGASI STATE (MODIFIKASI REFRESH DATA) ---
+        // --- 2. NAVIGASI STATE ---
         function navigate(page) {
             localStorage.setItem('currentPage', page);
             if (page !== 'transaksiPalet') {
                 selectedPalletIds = [];
             }
-            
-            // (FITUR BARU) Reset Flag Data untuk memaksa Refresh dari Database
+            // Reset Flag Data untuk memaksa Refresh
             isMasterDataFetched = false;
             isHistoryDataFetched = false;
             isAmbangBatasDataFetched = false;
             
-            // (Opsional) Kosongkan data lokal agar terlihat loading (visual feedback)
             masterPalletData = [];
             historyPalletData = [];
             ambangBatasData = [];
@@ -239,7 +237,6 @@
         function renderApp(page) {
             const container = document.getElementById('app-container');
             
-            // Proteksi halaman
             if (page !== 'login' && !currentUser) {
                 page = 'login';
             }
@@ -302,13 +299,8 @@
                             <span id="${getStatusMessageId(title)}" class="text-xs text-gray-500 block mt-1">Siap mencatat</span>
                         </div>
                     </div>
-                    
-                    <!-- Tampilan User di Pojok Atas (Setiap Halaman) -->
                     <div class="flex items-center text-sm text-gray-400 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
-                        <span class="mr-2">
-                            User: <span class="font-bold text-green-400">${username}</span> 
-                            <span class="text-xs text-gray-500">(${role})</span>
-                        </span>
+                        <span class="mr-2">User: <span class="font-bold text-green-400">${username}</span> <span class="text-xs text-gray-500">(${role})</span></span>
                         <button onclick="handleLogout()" title="Logout" class="ml-2 p-1 text-gray-400 hover:text-red-500 transition border-l border-gray-600 pl-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -318,7 +310,6 @@
                 </header>
             `;
         }
-
 
         // --- 4. TAMPILAN DASHBOARD ---
         function createDashboardView() {
@@ -334,7 +325,6 @@
                             </svg>
                             <h1 class="text-3xl font-bold text-gray-100 uppercase">Control Palet Hanwa</h1>
                         </div>
-                        <!-- Tampilan User Dashboard -->
                         <div class="flex items-center text-sm text-gray-400 bg-zinc-800 px-4 py-2 rounded-lg">
                             <span class="mr-3 hidden sm:inline">User: <span class="font-bold text-green-400">${username}</span> (${role})</span>
                             <button onclick="handleLogout()" title="Logout" class="ml-2 p-1 rounded-full hover:bg-zinc-700 transition text-red-400">
@@ -346,40 +336,33 @@
                     <div id="critical-stock-alert-container" class="mb-6"></div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                        <!-- Menu Cards -->
                         <div onclick="navigate('masterPalet')" class="menu-card rounded-xl p-8 shadow-xl">
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10m-4-11l-4 2.12V17M16 12l4 2.12V17"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Master Palet</h2><p class="text-sm text-gray-400">Data Induk Palet</p></div>
                         </div>
-
                         <div onclick="navigate('stockPalet')" class="menu-card rounded-xl p-8 shadow-xl">
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 12V3h16v9m-4-4l-4 4-4-4m8 8h-8v4h8v-4z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Stock Palet</h2><p class="text-sm text-gray-400">Ringkasan Stok Palet</p></div>
                         </div>
-
                         <div onclick="navigate('transaksiPalet')" class="menu-card rounded-xl p-8 shadow-xl">
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-1.447 3.382l-.675.337M4 12a7 7 0 1014 0 7 7 0 01-14 0z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Transaksi Palet</h2><p class="text-sm text-gray-400">Log Pergerakan Palet</p></div>
                         </div>
-                        
                         <div onclick="navigate('analyticsDashboard')" class="menu-card rounded-xl p-8 shadow-xl">
                              <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Dashboard Analitik</h2><p class="text-sm text-gray-400">Grafik & Wawasan Palet</p></div>
                         </div>
-
                         <div onclick="navigate('historyPalet')" class="menu-card rounded-xl p-8 shadow-xl">
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">History Palet</h2><p class="text-sm text-gray-400">Log Transaksi Palet</p></div>
                         </div>
-
                         <div onclick="navigate('stoPalet')" class="menu-card rounded-xl p-8 shadow-xl">
                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">STO Palet</h2><p class="text-sm text-gray-400">Stock Taking Palet</p></div>
                         </div>
                     </div>
-                    
                     <footer class="mt-12 text-center text-xs text-grey-600">
-                        Aplikasi Kontrol Palet (v4.5 Refresh Data & History A-K) - Elaborated by SOPARI-HSSI0293
+                        Aplikasi Kontrol Palet (v4.6 Grafik Bulan Berjalan) - Elaborated by SOPARI-HSSI0293
                     </footer>
                 </div>
             `;
@@ -393,11 +376,10 @@
         const USERCONTROL_SHEET_NAME = 'Usercontrol';
         const AMBANG_BATAS_SHEET_NAME = 'Ambang Batas'; 
         const RANGE = 'A:H'; 
-        const HISTORY_RANGE = 'A:K'; // (BARU) Range diperluas untuk History
+        const HISTORY_RANGE = 'A:K'; 
 
         const MASTER_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${MASTER_SHEET_NAME}&range=${RANGE}`;
         const STOCK_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${STOCK_SHEET_NAME}&range=${RANGE}`;
-        // (UPDATE) Menggunakan HISTORY_RANGE (A:K)
         const HISTORY_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${TRANSACTION_SHEET_NAME}&range=${HISTORY_RANGE}`;
         const USERCONTROL_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${USERCONTROL_SHEET_NAME}&range=A:C`;
         const AMBANG_BATAS_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${AMBANG_BATAS_SHEET_NAME}&range=A:C`;
@@ -423,7 +405,6 @@
         function parseGVizData(data) {
             const columns = data.table.cols.map(col => ({
                 id: col.id,
-                // Normalisasi semua label header ke HURUF BESAR & trim spasi
                 label: (col.label || col.id).toUpperCase().trim()  
             })).filter(col => col.label); 
 
@@ -1151,7 +1132,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="chart-container lg:col-span-2"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Analisis Usia Palet di Customer</h2><canvas id="palletAgingChart"></canvas></div>
                         <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Kondisi Palet (Log)</h2><canvas id="palletConditionChart"></canvas></div>
-                        <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Perputaran Palet (30 Hari)</h2><canvas id="palletVelocityChart"></canvas></div>
+                        <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Pergerakan Palet (Bulan Ini)</h2><canvas id="palletVelocityChart"></canvas></div>
                     </div>
                 </div>
             `;
@@ -1196,30 +1177,70 @@
             });
             chartInstances.palletCondition = new Chart(ctx, { type: 'pie', data: { labels: Object.keys(conditions), datasets: [{ data: Object.values(conditions), backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 206, 86, 0.6)', 'rgba(255, 99, 132, 0.6)', 'rgba(153, 102, 255, 0.6)'], hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#fff' } } } } });
         }
+        
         function renderPalletVelocityChart() {
             const ctx = document.getElementById('palletVelocityChart')?.getContext('2d'); if (!ctx) return;
-            const last30Days = {}; const labels = []; const today = new Date();
-            for (let i = 29; i >= 0; i--) {
-                const d = new Date(today); d.setDate(d.getDate() - i);
-                const label = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-                labels.push(label); last30Days[label] = { 'Masuk Hanwa': 0, 'Keluar Hanwa': 0 };
+            
+            // --- MODIFIKASI v4.6: Logika Bulan Berjalan (1 s/d Akhir Bulan) ---
+            const today = new Date();
+            const currentMonth = today.getMonth(); // 0-11
+            const currentYear = today.getFullYear();
+            
+            // Cari jumlah hari dalam bulan ini
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
+            const dailyData = {};
+            const labels = [];
+            
+            // Generate label 01 - 30/31 untuk bulan ini
+            for (let d = 1; d <= daysInMonth; d++) {
+                const label = `${(currentMonth + 1).toString().padStart(2, '0')}/${d.toString().padStart(2, '0')}`;
+                labels.push(label);
+                dailyData[label] = { 'Masuk Hanwa': 0, 'Keluar Hanwa': 0 };
             }
+            
             historyPalletData.forEach(item => {
                 const tglStr = String(item['TANGGAL TRANSAKSI'] || '');
                 const jenis = String(item['JENIS TRANSAKSI'] || '').toUpperCase();
                 const jumlah = parseInt(item['JUMLAH PALET'], 10) || 0;
-                const parts = tglStr.split('/');
-                if (parts.length === 3) {
-                    const label = `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
-                    if (last30Days[label]) {
-                        if (jenis === 'MASUK HANWA') last30Days[label]['Masuk Hanwa'] += jumlah;
-                        else if (jenis === 'KELUAR HANWA') last30Days[label]['Keluar Hanwa'] += jumlah;
+                
+                // Parsing tanggal yang robust (Mendukung YYYY-MM-DD dan MM/DD/YYYY)
+                let txDate = new Date(tglStr);
+                
+                // Validasi: Hanya hitung jika tanggal valid DAN berada di bulan & tahun saat ini
+                if (!isNaN(txDate) && txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
+                    const label = `${(txDate.getMonth() + 1).toString().padStart(2, '0')}/${txDate.getDate().toString().padStart(2, '0')}`;
+                    
+                    if (dailyData[label]) {
+                        if (jenis === 'MASUK HANWA') dailyData[label]['Masuk Hanwa'] += jumlah;
+                        else if (jenis === 'KELUAR HANWA') dailyData[label]['Keluar Hanwa'] += jumlah;
                     }
                 }
             });
-            const dataMasuk = labels.map(label => last30Days[label]['Masuk Hanwa']);
-            const dataKeluar = labels.map(label => last30Days[label]['Keluar Hanwa']);
-            chartInstances.palletVelocity = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Masuk Hanwa', data: dataMasuk, borderColor: 'rgba(75, 192, 192, 1)', backgroundColor: 'rgba(75, 192, 192, 0.2)', fill: true, tension: 0.1 }, { label: 'Keluar Hanwa', data: dataKeluar, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } }, plugins: { legend: { position: 'top', labels: { color: '#fff' } } } } });
+            
+            const dataMasuk = labels.map(label => dailyData[label]['Masuk Hanwa']);
+            const dataKeluar = labels.map(label => dailyData[label]['Keluar Hanwa']);
+            
+            chartInstances.palletVelocity = new Chart(ctx, { 
+                type: 'line', 
+                data: { 
+                    labels: labels, 
+                    datasets: [
+                        { label: 'Masuk Hanwa', data: dataMasuk, borderColor: 'rgba(75, 192, 192, 1)', backgroundColor: 'rgba(75, 192, 192, 0.2)', fill: true, tension: 0.1 }, 
+                        { label: 'Keluar Hanwa', data: dataKeluar, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.1 }
+                    ] 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } }, 
+                    plugins: { 
+                        legend: { position: 'top', labels: { color: '#fff' } },
+                        // Judul Dinamis
+                        title: { display: true, text: `Pergerakan Palet ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`, color: '#fff', font: { size: 16 } }
+                    } 
+                } 
+            });
         }
 
         // --- 12. EKSEKUSI ---
