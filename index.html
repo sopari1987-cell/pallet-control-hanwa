@@ -313,13 +313,14 @@
         function createDashboardView() {
             const username = currentUser ? currentUser.username : '...';
             const role = currentUser ? currentUser.role : '...';
-            const logoUrl = "https://deliveryhanwa.wordpress.com/wp-content/uploads/2025/11/logo-hanwa-1.png";
+            const logoUrl = "https://deliveryhanwa.wordpress.com/wp-content/uploads/2025/11/logo-hanwa-2.png";
 
             return `
                 <div class="p-6">
                     <header class="flex justify-between items-center mb-10">
                         <div class="flex items-center">
-                            <img src="${logoUrl}" alt="Hanwa Logo" class="h-12 w-auto mr-4 object-contain" onerror="this.style.display='none'">
+                            <!-- LOGO DASHBOARD: h-9 agar pas dengan text-3xl (36px) -->
+                            <img src="${logoUrl}" alt="Hanwa Logo" class="h-9 w-auto mr-4 object-contain" onerror="this.style.display='none'">
                             <h1 class="text-3xl font-bold text-gray-100 uppercase">Control Palet Hanwa</h1>
                         </div>
                         <div class="flex items-center text-sm text-gray-400 bg-zinc-800 px-4 py-2 rounded-lg">
@@ -359,7 +360,7 @@
                         </div>
                     </div>
                     <footer class="mt-12 text-center text-xs text-grey-600">
-                        Aplikasi Kontrol Palet ( V4.8 ) - Elaborated by SOPARI-HSSI0293
+                        Aplikasi Kontrol Palet HANWA ( v4.9 ) - Elaborated by SOPARI-HSSI0293
                     </footer>
                 </div>
             `;
@@ -467,7 +468,8 @@
                 <div class="login-view app-view">
                     <div class="login-card w-full max-w-sm p-8 rounded-lg shadow-2xl">
                         <div class="flex items-center justify-center mb-6">
-                            <img src="${logoUrl}" alt="Hanwa Logo" class="h-10 w-auto mr-3 object-contain" onerror="this.style.display='none'">
+                            <!-- LOGO LOGIN: h-8 agar pas dengan text-2xl (32px line-height) -->
+                            <img src="${logoUrl}" alt="Hanwa Logo" class="h-8 w-auto mr-3 object-contain" onerror="this.style.display='none'">
                             <h1 class="text-2xl font-bold text-gray-100 uppercase">Control Palet</h1>
                         </div>
                         <form id="login-form" onsubmit="handleLogin(event)">
