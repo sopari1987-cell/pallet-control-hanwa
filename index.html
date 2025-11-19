@@ -394,7 +394,7 @@
         const MASTER_SHEET_NAME = 'MASTER PALET'; 
         const STOCK_SHEET_NAME = 'Ringkasan Stok Palet'; 
         const TRANSACTION_SHEET_NAME = 'Log Transaksi Palet Batch'; 
-        const STO_SHEET_NAME = 'STOCK OPNAME'; // Nama sheet baru untuk STO
+        const STO_SHEET_NAME = 'STOCK OPNAME'; 
         const USERCONTROL_SHEET_NAME = 'Usercontrol';
         const AMBANG_BATAS_SHEET_NAME = 'Ambang Batas'; 
         const RANGE = 'A:H'; 
@@ -406,6 +406,7 @@
         const USERCONTROL_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${USERCONTROL_SHEET_NAME}&range=A:C`;
         const AMBANG_BATAS_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${AMBANG_BATAS_SHEET_NAME}&range=A:C`;
         
+        // GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT BARU ANDA (VERSI UNIVERSAL/HYBRID)
         const MOCK_API_DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbwiq9RP1jZykmw8a4W1PNgoUgfekOxCkAiHhnLtzFX8YB1I8TTPnzgkhNYQZH6I-MZJ/exec'; 
 
         // --- 6. FUNGSI FETCH DATA ---
@@ -1051,7 +1052,7 @@
                     <div class="bg-zinc-800 p-6 sm:p-8 rounded-xl shadow-2xl border border-zinc-700">
                         <div class="flex justify-between items-end mb-6">
                             <div>
-                                <h2 class="text-xl font-bold text-green-400">Pencocokan Stok Fisik (Opname)</h2>
+                                <h2 class="text-xl font-bold text-green-400">Pencocokan Data dan Aktual</h2>
                                 <p class="text-sm text-gray-400 mt-1">Pilih Lokasi, lalu tandai ID Palet yang <span class="text-green-300 font-bold">DITEMUKAN</span> secara fisik di lapangan.</p>
                             </div>
                             <div class="text-right hidden md:block">
@@ -1094,14 +1095,21 @@
                             </div>
 
                             <!-- Ringkasan Seleksi -->
-                            <div class="mt-6 p-4 bg-zinc-900/80 rounded-lg border border-green-500 flex justify-between items-center">
+                            <div class="mt-6 p-6 bg-zinc-900/80 rounded-xl border border-green-500 flex justify-between items-center shadow-lg">
                                 <div>
-                                    <h4 class="text-sm font-semibold text-green-300">Total Fisik Ditemukan:</h4>
-                                    <div class="text-3xl font-bold text-white"><span id="sto-selected-count">0</span> <span class="text-sm font-normal text-gray-400">Palet</span></div>
+                                    <h4 class="text-sm font-semibold text-green-300 uppercase tracking-wider mb-1">Fisik Ditemukan</h4>
+                                    <div class="flex items-baseline">
+                                        <span id="sto-selected-count" class="text-5xl font-extrabold text-white tracking-tight">0</span>
+                                        <span class="ml-2 text-sm text-gray-400 font-medium">Palet</span>
+                                    </div>
                                 </div>
-                                <div class="text-right">
-                                     <p class="text-xs text-gray-500 mb-1">Selisih (Missing): <span id="sto-missing-count" class="font-bold text-red-400">0</span></p>
-                                     <p class="text-xs text-gray-500">Total Sistem: <span id="sto-total-ref">0</span></p>
+                                <div class="text-right border-l border-zinc-700 pl-6">
+                                     <h4 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-1">Selisih (Missing)</h4>
+                                     <div class="flex items-baseline justify-end">
+                                        <span id="sto-missing-count" class="text-5xl font-extrabold text-green-500 tracking-tight">0</span>
+                                        <span class="ml-2 text-sm text-gray-400 font-medium">Palet</span>
+                                     </div>
+                                     <p class="text-xs text-zinc-500 mt-2">Total Sistem: <span id="sto-total-ref" class="text-zinc-300 font-bold">0</span></p>
                                 </div>
                             </div>
 
@@ -1302,9 +1310,15 @@
             if(totalRefEl) totalRefEl.textContent = totalSystem;
             if(systemHeaderCount) systemHeaderCount.textContent = `(${totalSystem} Palet di Sistem)`;
             if(selectedCountEl) selectedCountEl.textContent = found;
+            
             if(missingCountEl) {
                 missingCountEl.textContent = missing;
-                missingCountEl.className = missing > 0 ? "font-bold text-red-500" : "font-bold text-green-500";
+                // Update warna: Merah jika ada missing, Hijau jika 0 missing (Aman)
+                if (missing > 0) {
+                    missingCountEl.className = "text-5xl font-extrabold text-red-500 tracking-tight";
+                } else {
+                    missingCountEl.className = "text-5xl font-extrabold text-green-500 tracking-tight";
+                }
             }
         }
 
@@ -1336,6 +1350,7 @@
             const idFound = selectedPalletIds.join(',');
             const countFound = selectedPalletIds.length;
             const totalSystem = currentSTOList.length;
+            const missingCount = totalSystem - countFound;
             
             // Sesuai urutan kolom yang diminta:
             // Tanggal Transaksi, Jam Transaksi, Lokasi Awal, Nama Palet, Size, ID Palet, Jumlah Palet, Keterangan, USERNAME, Submitted By, Jenis Transaksi
@@ -1348,7 +1363,8 @@
                 'Size': size,
                 'ID Palet': idFound,
                 'Jumlah Palet': countFound,
-                'Keterangan': `LOKASI: ${lokasi} | SYSTEM: ${totalSystem} | FOUND: ${countFound} | MISSING: ${totalSystem - countFound}`,
+                'MISSING': missingCount, // KOLOM BARU: Mencatat nilai missing ke database
+                'Keterangan': `LOKASI: ${lokasi} | SYSTEM: ${totalSystem} | FOUND: ${countFound} | MISSING: ${missingCount}`,
                 'USERNAME': checker, // Ini nama petugas input manual
                 'Submitted By': currentUser ? currentUser.username : 'Guest', // Ini akun yang login
                 'Jenis Transaksi': 'STOCK OPNAME'
@@ -1376,10 +1392,36 @@
                 msgBox.classList.remove('hidden', 'bg-red-800');
                 msgBox.classList.add('bg-green-800', 'text-white');
                 
-                // Reset select tapi biarkan lokasi
+                // --- MODIFIKASI: RESET TOTAL KE POSISI AWAL ---
+                event.target.reset(); // Reset inputan HTML form
+                
+                // Reset Dropdown Nama & Size menjadi disabled
+                const namaEl = document.getElementById('stoNamaPalet');
+                const sizeEl = document.getElementById('stoSizePalet');
+                
+                if (namaEl) {
+                    namaEl.innerHTML = createOptionHtml([], 'Pilih Nama Palet');
+                    namaEl.disabled = true;
+                }
+                if (sizeEl) {
+                    sizeEl.innerHTML = createOptionHtml([], 'Pilih Size Palet');
+                    sizeEl.disabled = true;
+                }
+
+                // Reset Container Kartu menjadi pesan instruksi awal
+                const container = document.getElementById('sto-id-card-container');
+                if (container) {
+                    container.innerHTML = '<p class="text-gray-500 col-span-full italic py-4 text-center">Silakan pilih Lokasi, Nama, dan Size Palet terlebih dahulu.</p>';
+                }
+
+                // Reset Data Logic
                 selectedPalletIds = [];
-                updateSTOCounters(currentSTOList.length);
-                renderSTOPalletIds(); // Re-render cards
+                currentSTOList = [];
+                updateSTOCounters(0);
+                
+                // Pastikan Tanggal terisi hari ini lagi
+                const tglInput = document.getElementById('stoTanggal');
+                if(tglInput) tglInput.value = new Date().toISOString().split('T')[0];
 
             } catch (error) {
                 console.error(error);
@@ -1494,9 +1536,9 @@
                 <div id="analytics-dashboard-view" class="app-view p-6">
                     ${createHeader(ANALYTICS_TITLE, 'dashboard')}
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="chart-container lg:col-span-2"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Analisis Usia Palet di Customer</h2><canvas id="palletAgingChart"></canvas></div>
-                        <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Kondisi Palet (Log)</h2><canvas id="palletConditionChart"></canvas></div>
-                        <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Pergerakan Palet (Bulan Ini)</h2><canvas id="palletVelocityChart"></canvas></div>
+                        <div class="chart-container lg:col-span-2"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Analisis Lama Palet di Customer</h2><canvas id="palletAgingChart"></canvas></div>
+                        <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Kondisi Palet </h2><canvas id="palletConditionChart"></canvas></div>
+                        <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Grafik Pergerakan Palet</h2><canvas id="palletVelocityChart"></canvas></div>
                     </div>
                 </div>
             `;
