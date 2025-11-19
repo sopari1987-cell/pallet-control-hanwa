@@ -152,7 +152,6 @@
         let selectedPalletIds = []; 
         let ambangBatasData = []; 
         let criticalStockAlerts = []; 
-        // Flag fetch dihapus/direset saat navigasi
         let isMasterDataFetched = false;
         let isHistoryDataFetched = false;
         let isAmbangBatasDataFetched = false;
@@ -221,7 +220,6 @@
             if (page !== 'transaksiPalet') {
                 selectedPalletIds = [];
             }
-            // Reset Flag Data untuk memaksa Refresh
             isMasterDataFetched = false;
             isHistoryDataFetched = false;
             isAmbangBatasDataFetched = false;
@@ -283,7 +281,7 @@
             return `status-message-${title.toLowerCase().replace(/\s/g, '-')}`;
         }
 
-        // --- FUNGSI HEADER UNIVERSAL DENGAN USERNAME ---
+        // --- FUNGSI HEADER UNIVERSAL ---
         function createHeader(title, backPage) {
              const username = currentUser ? currentUser.username : 'Guest';
              const role = currentUser ? currentUser.role : 'User';
@@ -315,14 +313,13 @@
         function createDashboardView() {
             const username = currentUser ? currentUser.username : '...';
             const role = currentUser ? currentUser.role : '...';
+            const logoUrl = "https://deliveryhanwa.wordpress.com/wp-content/uploads/2025/11/logo-hanwa.png";
 
             return `
                 <div class="p-6">
                     <header class="flex justify-between items-center mb-10">
                         <div class="flex items-center">
-                            <svg class="w-8 h-8 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10M10 7v10M16 7v10M20 4v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2h12a2 2 0 012 2z"></path>
-                            </svg>
+                            <img src="${logoUrl}" alt="Hanwa Logo" class="h-12 w-auto mr-4 object-contain" onerror="this.style.display='none'">
                             <h1 class="text-3xl font-bold text-gray-100 uppercase">Control Palet Hanwa</h1>
                         </div>
                         <div class="flex items-center text-sm text-gray-400 bg-zinc-800 px-4 py-2 rounded-lg">
@@ -362,7 +359,7 @@
                         </div>
                     </div>
                     <footer class="mt-12 text-center text-xs text-grey-600">
-                        Aplikasi Kontrol Palet (v4.6 Grafik Bulan Berjalan) - Elaborated by SOPARI-HSSI0293
+                        Aplikasi Kontrol Palet (v4.8 Logo Custom) - Elaborated by SOPARI-HSSI0293
                     </footer>
                 </div>
             `;
@@ -465,11 +462,12 @@
 
         // --- LOGIC UNTUK LOGIN ---
         function createLoginView() {
+            const logoUrl = "https://deliveryhanwa.wordpress.com/wp-content/uploads/2025/11/logo-hanwa.png";
             return `
                 <div class="login-view app-view">
                     <div class="login-card w-full max-w-sm p-8 rounded-lg shadow-2xl">
                         <div class="flex items-center justify-center mb-6">
-                            <svg class="w-10 h-10 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10M10 7v10M16 7v10M20 4v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2h12a2 2 0 012 2z"></path></svg>
+                            <img src="${logoUrl}" alt="Hanwa Logo" class="h-10 w-auto mr-3 object-contain" onerror="this.style.display='none'">
                             <h1 class="text-2xl font-bold text-gray-100 uppercase">Control Palet</h1>
                         </div>
                         <form id="login-form" onsubmit="handleLogin(event)">
@@ -1153,73 +1151,188 @@
         
         function renderPalletAgingChart() {
             const ctx = document.getElementById('palletAgingChart')?.getContext('2d'); if (!ctx) return;
-            const bins = { '0-10 Hari': 0, '11-20 Hari': 0, '21-30 Hari': 0, '> 30 Hari': 0 };
+            
+            const bins = {
+                '0-10 Hari': { count: 0, sizes: {} },
+                '11-20 Hari': { count: 0, sizes: {} },
+                '21-30 Hari': { count: 0, sizes: {} },
+                '> 30 Hari': { count: 0, sizes: {} }
+            };
+            
             const today = new Date();
             masterPalletData.forEach(item => {
                 if (String(item['LOKASI'] || '').toUpperCase() === 'CUSTOMER') {
+                    const size = item['SIZE'] || 'Unknown';
                     const tglUpdateStr = String(item['TANGGAL UPDATE'] || '');
                     const parts = tglUpdateStr.split('/');
                     if (parts.length === 3) {
                         const updateDate = new Date(parts[2], parts[0] - 1, parts[1]);
                         const diffDays = Math.ceil(Math.abs(today - updateDate) / (1000 * 60 * 60 * 24));
-                        if (diffDays <= 10) bins['0-10 Hari']++; else if (diffDays <= 20) bins['11-20 Hari']++; else if (diffDays <= 30) bins['21-30 Hari']++; else bins['> 30 Hari']++;
+                        
+                        let key = '';
+                        if (diffDays <= 10) key = '0-10 Hari';
+                        else if (diffDays <= 20) key = '11-20 Hari';
+                        else if (diffDays <= 30) key = '21-30 Hari';
+                        else key = '> 30 Hari';
+                        
+                        if (key) {
+                            bins[key].count++;
+                            bins[key].sizes[size] = (bins[key].sizes[size] || 0) + 1;
+                        }
                     }
                 }
             });
-            chartInstances.palletAging = new Chart(ctx, { type: 'bar', data: { labels: Object.keys(bins), datasets: [{ label: 'Jumlah Palet', data: Object.values(bins), backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)', 'rgba(255, 99, 132, 0.6)'], borderColor: ['rgba(75, 192, 192, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)', 'rgba(255, 99, 132, 1)'], borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } }, plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false } });
+
+            const labels = Object.keys(bins);
+            const data = labels.map(k => bins[k].count);
+            
+            // Helper function untuk membuat string rincian size
+            const getBreakdown = (label) => {
+                const sizes = bins[label].sizes;
+                const sortedSizes = Object.entries(sizes).sort((a, b) => b[1] - a[1]); // Sort by count desc
+                if (sortedSizes.length === 0) return 'Tidak ada data';
+                return sortedSizes.map(([s, c]) => `• ${s}: ${c}`).join('\n');
+            };
+
+            chartInstances.palletAging = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Palet',
+                        data: data,
+                        backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)', 'rgba(255, 99, 132, 0.6)'],
+                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)', 'rgba(255, 99, 132, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(context) {
+                                    const label = context[0].label;
+                                    return '\nRINCIAN SIZE:\n' + getBreakdown(label);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
+
         function renderPalletConditionChart() {
             const ctx = document.getElementById('palletConditionChart')?.getContext('2d'); if (!ctx) return;
-            const conditions = { 'Baik': 0, 'Rusak Ringan': 0, 'Rusak Berat': 0, 'Lainnya': 0 };
+            
+            const conditions = {
+                'Baik': { count: 0, sizes: {} },
+                'Rusak Ringan': { count: 0, sizes: {} },
+                'Rusak Berat': { count: 0, sizes: {} },
+                'Lainnya': { count: 0, sizes: {} }
+            };
+            
             historyPalletData.forEach(item => {
                 const kondisi = String(item['KETERANGAN'] || '').trim();
-                if (kondisi === 'Baik') conditions['Baik']++; else if (kondisi === 'Rusak Ringan') conditions['Rusak Ringan']++; else if (kondisi === 'Rusak Berat') conditions['Rusak Berat']++; else if (kondisi && kondisi !== '-') conditions['Lainnya']++;
+                const size = item['SIZE'] || 'Unknown';
+                
+                let key = 'Lainnya';
+                if (kondisi === 'Baik') key = 'Baik';
+                else if (kondisi === 'Rusak Ringan') key = 'Rusak Ringan';
+                else if (kondisi === 'Rusak Berat') key = 'Rusak Berat';
+                else if (!kondisi || kondisi === '-') return; // Skip empty
+                
+                conditions[key].count++;
+                conditions[key].sizes[size] = (conditions[key].sizes[size] || 0) + 1;
             });
-            chartInstances.palletCondition = new Chart(ctx, { type: 'pie', data: { labels: Object.keys(conditions), datasets: [{ data: Object.values(conditions), backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 206, 86, 0.6)', 'rgba(255, 99, 132, 0.6)', 'rgba(153, 102, 255, 0.6)'], hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#fff' } } } } });
+            
+            const labels = Object.keys(conditions);
+            const data = labels.map(k => conditions[k].count);
+            
+            const getBreakdown = (label) => {
+                const sizes = conditions[label].sizes;
+                const sortedSizes = Object.entries(sizes).sort((a, b) => b[1] - a[1]);
+                if (sortedSizes.length === 0) return 'Tidak ada data';
+                return sortedSizes.map(([s, c]) => `• ${s}: ${c}`).join('\n');
+            };
+
+            chartInstances.palletCondition = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 206, 86, 0.6)', 'rgba(255, 99, 132, 0.6)', 'rgba(153, 102, 255, 0.6)'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#fff' } },
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(context) {
+                                    const label = context[0].label;
+                                    return '\nRINCIAN SIZE:\n' + getBreakdown(label);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
         
         function renderPalletVelocityChart() {
             const ctx = document.getElementById('palletVelocityChart')?.getContext('2d'); if (!ctx) return;
             
-            // --- MODIFIKASI v4.6: Logika Bulan Berjalan (1 s/d Akhir Bulan) ---
             const today = new Date();
-            const currentMonth = today.getMonth(); // 0-11
+            const currentMonth = today.getMonth(); 
             const currentYear = today.getFullYear();
-            
-            // Cari jumlah hari dalam bulan ini
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
             
             const dailyData = {};
             const labels = [];
             
-            // Generate label 01 - 30/31 untuk bulan ini
             for (let d = 1; d <= daysInMonth; d++) {
                 const label = `${(currentMonth + 1).toString().padStart(2, '0')}/${d.toString().padStart(2, '0')}`;
                 labels.push(label);
-                dailyData[label] = { 'Masuk Hanwa': 0, 'Keluar Hanwa': 0 };
+                dailyData[label] = { 
+                    'Masuk Hanwa': { total: 0, sizes: {} }, 
+                    'Keluar Hanwa': { total: 0, sizes: {} } 
+                };
             }
             
             historyPalletData.forEach(item => {
                 const tglStr = String(item['TANGGAL TRANSAKSI'] || '');
                 const jenis = String(item['JENIS TRANSAKSI'] || '').toUpperCase();
                 const jumlah = parseInt(item['JUMLAH PALET'], 10) || 0;
+                const size = item['SIZE'] || 'Unknown';
                 
-                // Parsing tanggal yang robust (Mendukung YYYY-MM-DD dan MM/DD/YYYY)
                 let txDate = new Date(tglStr);
                 
-                // Validasi: Hanya hitung jika tanggal valid DAN berada di bulan & tahun saat ini
                 if (!isNaN(txDate) && txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
                     const label = `${(txDate.getMonth() + 1).toString().padStart(2, '0')}/${txDate.getDate().toString().padStart(2, '0')}`;
                     
                     if (dailyData[label]) {
-                        if (jenis === 'MASUK HANWA') dailyData[label]['Masuk Hanwa'] += jumlah;
-                        else if (jenis === 'KELUAR HANWA') dailyData[label]['Keluar Hanwa'] += jumlah;
+                        if (jenis === 'MASUK HANWA') {
+                            dailyData[label]['Masuk Hanwa'].total += jumlah;
+                            dailyData[label]['Masuk Hanwa'].sizes[size] = (dailyData[label]['Masuk Hanwa'].sizes[size] || 0) + jumlah;
+                        }
+                        else if (jenis === 'KELUAR HANWA') {
+                            dailyData[label]['Keluar Hanwa'].total += jumlah;
+                            dailyData[label]['Keluar Hanwa'].sizes[size] = (dailyData[label]['Keluar Hanwa'].sizes[size] || 0) + jumlah;
+                        }
                     }
                 }
             });
             
-            const dataMasuk = labels.map(label => dailyData[label]['Masuk Hanwa']);
-            const dataKeluar = labels.map(label => dailyData[label]['Keluar Hanwa']);
+            const dataMasuk = labels.map(label => dailyData[label]['Masuk Hanwa'].total);
+            const dataKeluar = labels.map(label => dailyData[label]['Keluar Hanwa'].total);
             
             chartInstances.palletVelocity = new Chart(ctx, { 
                 type: 'line', 
@@ -1236,8 +1349,28 @@
                     scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } }, 
                     plugins: { 
                         legend: { position: 'top', labels: { color: '#fff' } },
-                        // Judul Dinamis
-                        title: { display: true, text: `Pergerakan Palet ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`, color: '#fff', font: { size: 16 } }
+                        title: { display: true, text: `Pergerakan Palet ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`, color: '#fff', font: { size: 16 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const datasetLabel = context.dataset.label;
+                                    const value = context.raw;
+                                    if (value === 0) return null; // Hide if 0
+
+                                    const dateLabel = context.label;
+                                    const dataObj = dailyData[dateLabel][datasetLabel];
+                                    
+                                    let lines = [`${datasetLabel}: ${value}`];
+                                    if (dataObj && dataObj.sizes) {
+                                        const sortedSizes = Object.entries(dataObj.sizes).sort((a, b) => b[1] - a[1]);
+                                        sortedSizes.forEach(([s, c]) => {
+                                            lines.push(`   • ${s}: ${c}`);
+                                        });
+                                    }
+                                    return lines;
+                                }
+                            }
+                        }
                     } 
                 } 
             });
