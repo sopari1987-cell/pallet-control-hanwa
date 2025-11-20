@@ -20,20 +20,21 @@
             background-color: #27272a; /* Zinc 800 */
             transition: all 0.3s ease-in-out;
             cursor: pointer;
-            border: 1px solid transparent;
+            border-top: 1px solid transparent;
+            border-right: 1px solid transparent;
+            border-bottom: 1px solid transparent;
+            /* Border left akan diatur per elemen di HTML */
         }
         .menu-card:hover {
             background-color: #3f3f46; /* Zinc 700 */
             transform: translateY(-3px);
-            border-color: #22c55e; /* Border hijau (Green 500) saat hover */
         }
         .icon {
             color: #9ca3af; /* Warna ikon default (abu-abu terang) */
             transition: color 0.3s ease-in-out;
         }
-        .menu-card:hover .icon {
-            color: #22c55e; /* Warna ikon hijau (Green 500) saat hover */
-        }
+        /* Hover effect specific to cards handled inline/utility classes now */
+        
         /* Style untuk App View */
         .app-view {
             background-color: #18181b; /* Zinc 900 */
@@ -160,8 +161,8 @@
             
             /* Adjust table for print */
             table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border: 1px solid black !important; padding: 8px !important; color: black !important; }
-            th { background-color: #f3f4f6 !important; font-weight: bold !important; }
+            th, td { border: 1px solid black !important; padding: 4px !important; color: black !important; font-size: 11px !important; }
+            th { background-color: #e5e7eb !important; font-weight: bold !important; text-align: center !important; }
         }
     </style>
 </head>
@@ -365,6 +366,7 @@
         }
 
         // --- 4. TAMPILAN DASHBOARD ---
+        // MODIFIKASI: Semua kartu menu sekarang memiliki outline warna (border-l-4)
         function createDashboardView() {
             const username = currentUser ? currentUser.username : '...';
             const role = currentUser ? currentUser.role : '...';
@@ -389,35 +391,45 @@
                     <div id="critical-stock-alert-container" class="mb-6"></div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-                        <div onclick="navigate('masterPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10m-4-11l-4 2.12V17M16 12l4 2.12V17"></path></svg>
+                        <!-- Master Palet: Blue Outline -->
+                        <div onclick="navigate('masterPalet')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-blue-500">
+                            <svg class="icon w-16 h-16 mb-4 mx-auto text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10m-4-11l-4 2.12V17M16 12l4 2.12V17"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Master Palet</h2><p class="text-sm text-gray-400">Data Induk Palet</p></div>
                         </div>
-                        <div onclick="navigate('stockPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 12V3h16v9m-4-4l-4 4-4-4m8 8h-8v4h8v-4z"></path></svg>
+
+                        <!-- Stock Palet: Emerald Outline -->
+                        <div onclick="navigate('stockPalet')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-emerald-500">
+                            <svg class="icon w-16 h-16 mb-4 mx-auto text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 12V3h16v9m-4-4l-4 4-4-4m8 8h-8v4h8v-4z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Stock Palet</h2><p class="text-sm text-gray-400">Ringkasan Stok Palet</p></div>
                         </div>
-                        <div onclick="navigate('transaksiPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-1.447 3.382l-.675.337M4 12a7 7 0 1014 0 7 7 0 01-14 0z"></path></svg>
+
+                        <!-- Transaksi Palet: Orange Outline -->
+                        <div onclick="navigate('transaksiPalet')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-orange-500">
+                            <svg class="icon w-16 h-16 mb-4 mx-auto text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-1.447 3.382l-.675.337M4 12a7 7 0 1014 0 7 7 0 01-14 0z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Transaksi Palet</h2><p class="text-sm text-gray-400">Log Pergerakan Palet</p></div>
                         </div>
-                        <div onclick="navigate('stoPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+
+                        <!-- STO Palet: Purple Outline -->
+                        <div onclick="navigate('stoPalet')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-purple-500">
+                            <svg class="icon w-16 h-16 mb-4 mx-auto text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">STO Palet</h2><p class="text-sm text-gray-400">Stock Taking Palet</p></div>
                         </div>
                         
-                        <!-- KARTU MENU BARU: Form & Report STO -->
+                        <!-- Form & Report STO: Indigo Outline -->
                         <div onclick="navigate('formReportSTO')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-indigo-500">
                             <svg class="icon w-16 h-16 mb-4 mx-auto text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Form & Report STO</h2><p class="text-sm text-gray-400">Cetak Form & Laporan</p></div>
                         </div>
 
-                        <div onclick="navigate('analyticsDashboard')" class="menu-card rounded-xl p-8 shadow-xl">
-                             <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"></path></svg>
+                        <!-- Dashboard Analitik: Cyan Outline -->
+                        <div onclick="navigate('analyticsDashboard')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-cyan-500">
+                             <svg class="icon w-16 h-16 mb-4 mx-auto text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">Dashboard Analitik</h2><p class="text-sm text-gray-400">Grafik & Wawasan Palet</p></div>
                         </div>
-                        <div onclick="navigate('historyPalet')" class="menu-card rounded-xl p-8 shadow-xl">
-                            <svg class="icon w-16 h-16 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+
+                        <!-- History Palet: Rose Outline -->
+                        <div onclick="navigate('historyPalet')" class="menu-card rounded-xl p-8 shadow-xl border-l-4 border-rose-500">
+                            <svg class="icon w-16 h-16 mb-4 mx-auto text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             <div class="text-center"><h2 class="text-xl font-bold uppercase mb-1 text-gray-100">History Palet</h2><p class="text-sm text-gray-400">Log Transaksi Palet</p></div>
                         </div>
                     </div>
@@ -445,7 +457,6 @@
         const HISTORY_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${TRANSACTION_SHEET_NAME}&range=${HISTORY_RANGE}`;
         const FORM_STO_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${FORM_STO_SHEET_NAME}&range=A:Z`;
         
-        // --- PERUBAHAN DI SINI: UPDATE URL RANGE REPORT STO ---
         // Diubah dari A:M menjadi A:Z untuk memastikan kolom Bulan STO dan Tahun STO terbaca
         const STO_REPORT_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${STO_SHEET_NAME}&range=A:Z`; 
         
@@ -1635,54 +1646,111 @@
             }
         }
         
-        // Render Form STO dari Sheet Khusus
+        // MODIFIKASI: Render Form STO agar PERSIS seperti sumber sheet
+        // Menggunakan tabel HTML dengan border yang tegas dan lebar kolom manual
         function renderFormSTO(container, headers, data) {
-            let html = `<h3 class="text-center font-bold text-xl mb-4">FORM CEK STO PALET</h3>`;
-            html += `<table class="w-full border-collapse border border-black text-xs"><thead><tr class="bg-gray-200">`;
-            headers.forEach(h => html += `<th class="border border-black p-2">${h}</th>`);
+            // Definisi lebar kolom manual untuk meniru kertas form (Total 100%)
+            // Asumsi header sheet standar: NO, ID PALET, NAMA PALET, SIZE, LOKASI, FISIK, KETERANGAN
+            // Kita bisa mapping lebar kolom berdasarkan nama header (case insensitive)
+            
+            const widthMap = {
+                'NO': '5%',
+                'ID PALET': '15%',
+                'ID': '15%',
+                'NAMA PALET': '30%',
+                'NAMA': '30%',
+                'SIZE': '10%',
+                'LOKASI': '20%',
+                'LOKASI SISTEM': '20%',
+                'FISIK': '10%',
+                'CEK FISIK': '10%',
+                'KETERANGAN': '10%',
+                'KET': '10%'
+            };
+
+            let html = `
+                <div class="font-sans text-black p-2">
+                    <h3 class="text-center font-bold text-xl mb-1 uppercase">FORM CEK STO PALET</h3>
+                    <div class="flex justify-between text-xs mb-2 px-1 border-b-2 border-black pb-1">
+                        <span>Tanggal Cek: ......................................</span>
+                        <span>Checker: ......................................</span>
+                    </div>
+                    <table class="w-full border-collapse border border-black text-[11px]" style="table-layout: fixed;">
+                        <thead class="bg-gray-200 text-center font-bold text-xs">
+                            <tr>
+            `;
+            
+            // Render Headers dengan Width Setting
+            headers.forEach(h => {
+                const w = widthMap[h] || 'auto'; // Default auto jika tidak dikenal
+                html += `<th class="border border-black p-1 uppercase" style="width: ${w}">${h}</th>`;
+            });
+
             html += `</tr></thead><tbody>`;
             
+            // Render Rows
             data.forEach(row => {
-                html += `<tr>`;
-                headers.forEach(h => html += `<td class="border border-black p-2">${row[h] || ''}</td>`);
+                html += `<tr class="text-center">`;
+                headers.forEach(h => {
+                    let val = row[h] || '';
+                    // Jika kolom kosong (biasanya untuk diisi manual seperti fisik/keterangan), beri spasi agar baris tidak collapse
+                    if (!val && (h.includes('FISIK') || h.includes('KET') || h.includes('CEK'))) {
+                        val = '&nbsp;'; 
+                    }
+                    
+                    // Alignment styling
+                    let alignClass = 'text-center';
+                    if (h.includes('NAMA') || h.includes('LOKASI')) alignClass = 'text-left pl-2';
+                    if (h.includes('ID')) alignClass = 'text-left pl-2 font-bold';
+
+                    html += `<td class="border border-black p-1 ${alignClass} overflow-hidden whitespace-nowrap text-ellipsis">${val}</td>`;
+                });
                 html += `</tr>`;
             });
-            html += `</tbody></table>`;
+            html += `</tbody></table></div>`;
             container.innerHTML = html;
         }
 
         // Fallback: Render Form STO dari Master Data (Jika sheet khusus tidak ada)
+        // Diperbarui agar formatnya juga rapi
         function renderFormSTOFallback(container) {
-            let html = `<h3 class="text-center font-bold text-xl mb-2">FORM CEK STO PALET</h3>`;
-            html += `<p class="text-center text-sm mb-4">Tanggal Cek: .............................. | Checker: ..............................</p>`;
-            html += `<table class="w-full border-collapse border border-black text-xs">
-                <thead>
-                    <tr class="bg-gray-200">
-                        <th class="border border-black p-2">No</th>
-                        <th class="border border-black p-2">ID Palet</th>
-                        <th class="border border-black p-2">Nama Palet</th>
-                        <th class="border border-black p-2">Size</th>
-                        <th class="border border-black p-2">Lokasi Sistem</th>
-                        <th class="border border-black p-2">Fisik (V)</th>
-                        <th class="border border-black p-2">Keterangan</th>
-                    </tr>
-                </thead><tbody>`;
+            let html = `
+                <div class="font-sans text-black p-2">
+                    <h3 class="text-center font-bold text-xl mb-1 uppercase">FORM CEK STO PALET (FALLBACK)</h3>
+                    <div class="flex justify-between text-xs mb-2 px-1 border-b-2 border-black pb-1">
+                        <span>Tanggal Cek: ......................................</span>
+                        <span>Checker: ......................................</span>
+                    </div>
+                    <table class="w-full border-collapse border border-black text-[11px]" style="table-layout: fixed;">
+                        <thead class="bg-gray-200 text-center font-bold text-xs">
+                            <tr>
+                                <th class="border border-black p-1 w-[5%]">NO</th>
+                                <th class="border border-black p-1 w-[15%]">ID PALET</th>
+                                <th class="border border-black p-1 w-[25%]">NAMA PALET</th>
+                                <th class="border border-black p-1 w-[10%]">SIZE</th>
+                                <th class="border border-black p-1 w-[20%]">LOKASI SISTEM</th>
+                                <th class="border border-black p-1 w-[10%]">FISIK (V)</th>
+                                <th class="border border-black p-1 w-[15%]">KETERANGAN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
             
             // Urutkan berdasarkan Lokasi lalu Nama
             const sortedData = masterPalletData.sort((a, b) => (a['LOKASI'] || '').localeCompare(b['LOKASI'] || ''));
             
             sortedData.forEach((item, idx) => {
-                html += `<tr>
-                    <td class="border border-black p-1 text-center">${idx + 1}</td>
-                    <td class="border border-black p-1 font-bold">${item['ID PALET'] || '-'}</td>
-                    <td class="border border-black p-1">${item['NAMA PALET'] || '-'}</td>
+                html += `<tr class="text-center">
+                    <td class="border border-black p-1">${idx + 1}</td>
+                    <td class="border border-black p-1 font-bold text-left pl-2">${item['ID PALET'] || '-'}</td>
+                    <td class="border border-black p-1 text-left pl-2">${item['NAMA PALET'] || '-'}</td>
                     <td class="border border-black p-1">${item['SIZE'] || '-'}</td>
-                    <td class="border border-black p-1">${item['LOKASI'] || '-'}</td>
-                    <td class="border border-black p-1"></td>
-                    <td class="border border-black p-1"></td>
+                    <td class="border border-black p-1 text-left pl-2">${item['LOKASI'] || '-'}</td>
+                    <td class="border border-black p-1">&nbsp;</td>
+                    <td class="border border-black p-1">&nbsp;</td>
                 </tr>`;
             });
-            html += `</tbody></table>`;
+            html += `</tbody></table></div>`;
             container.innerHTML = html;
         }
 
@@ -1708,19 +1776,28 @@
             csvContent.push(`"Tanggal Cek:","..............................","Checker:",".............................."`);
             csvContent.push(""); // Spasi kosong
 
-            // Header
-            const headers = ["No", "ID Palet", "Nama Palet", "Size", "Lokasi Sistem", "Fisik (V)", "Keterangan"];
-            csvContent.push(headers.map(h => `"${h}"`).join(","));
+            // Header (Menggunakan keys dari data pertama jika ada, atau standar)
+            const firstRow = formSTOData[0];
+            const headers = firstRow ? Object.keys(firstRow) : ["No", "ID Palet", "Nama Palet", "Size", "Lokasi Sistem", "Fisik (V)", "Keterangan"];
+            
+            // Jika headers belum termasuk kolom manual (Fisik/Ket), kita pakai standar saja biar rapi
+            const standardHeaders = ["No", "ID Palet", "Nama Palet", "Size", "Lokasi Sistem", "Fisik (V)", "Keterangan"];
+            csvContent.push(standardHeaders.map(h => `"${h}"`).join(","));
 
             // Isi Data (Fallback Logic)
-            // Asumsi formSTOData adalah array dari Master Data yang sudah disort
             formSTOData.forEach((item, index) => {
+                // Mencoba mapping field yang mungkin berbeda namanya
+                const id = item['ID PALET'] || item['ID'] || '-';
+                const nama = item['NAMA PALET'] || item['NAMA'] || '-';
+                const size = item['SIZE'] || '-';
+                const loc = item['LOKASI'] || item['LOKASI SISTEM'] || '-';
+
                 const row = [
                     index + 1,
-                    `"${item['ID PALET'] || '-'}"`,
-                    `"${item['NAMA PALET'] || '-'}"`,
-                    `"${item['SIZE'] || '-'}"`,
-                    `"${item['LOKASI'] || '-'}"`,
+                    `"${id}"`,
+                    `"${nama}"`,
+                    `"${size}"`,
+                    `"${loc}"`,
                     "", // Kolom Fisik Kosong untuk diisi manual
                     ""  // Kolom Keterangan Kosong
                 ];
@@ -1957,7 +2034,7 @@
                 <div id="analytics-dashboard-view" class="app-view p-6">
                     ${createHeader(ANALYTICS_TITLE, 'dashboard')}
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="chart-container lg:col-span-2"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Analisis Usia Palet di Customer</h2><canvas id="palletAgingChart"></canvas></div>
+                        <div class="chart-container lg:col-span-2"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Analisis Lama Palet di Customer</h2><canvas id="palletAgingChart"></canvas></div>
                         <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Kondisi Palet (Log)</h2><canvas id="palletConditionChart"></canvas></div>
                         <div class="chart-container"><h2 class="text-xl font-bold text-gray-300 mb-4 text-center">Pergerakan Palet (Bulan Ini)</h2><canvas id="palletVelocityChart"></canvas></div>
                     </div>
